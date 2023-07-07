@@ -13,7 +13,6 @@ const client = new TwitterApi({
 
 async function gettwitter() {
     const jack = client.v2.tweet("test")
-    console.log(jack);
 }
 
 gettwitter();
