@@ -1,4 +1,3 @@
-const request = require("request");
 const schedule = require("node-schedule");
 
 const yaml = require("js-yaml");
