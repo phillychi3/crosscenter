@@ -9,7 +9,7 @@ func main() {
 	threadeuser := sites.Threadsuser{
 		Username: "instagram",
 	}
-	result, err := sites.GetThreadsUserId(threadeuser)
+	result, err := sites.GetThreadsPosts(threadeuser)
 	if err != nil {
 		fmt.Println(err)
 	}

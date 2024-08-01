@@ -60,7 +60,6 @@ func getToken(user string) (*Tokens, error) {
 	findScript = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "script" {
 			for _, a := range n.Attr {
-				fmt.Println(a.Key, a.Val)
 				if a.Key == "type" && a.Val == "application/json" && strings.Contains(n.FirstChild.Data, "LSD") {
 					scriptContent = n.FirstChild.Data
 					return
@@ -83,7 +82,6 @@ func getToken(user string) (*Tokens, error) {
 	}
 
 	lsd := matches[1]
-	fmt.Println(lsd)
 	return &Tokens{LSD: lsd}, nil
 }
 
@@ -100,12 +98,8 @@ func ThreadHeader(user string, lsd string) map[string]string {
 	}
 }
 
-func GetThreadsUserId(threadsuser Threadsuser) (string, error) {
-	tokens, err := getToken(threadsuser.Username)
-	if err != nil {
-		return "", err
-	}
-	lsd := tokens.LSD
+func GetThreadsUserId(threadsuser Threadsuser, lsdtoken Tokens) (string, error) {
+	lsd := lsdtoken.LSD
 	pathName := fmt.Sprintf("/@%s", threadsuser.Username)
 	payload := url.Values{
 		"route_urls[0]":     {pathName},
@@ -147,8 +141,6 @@ func GetThreadsUserId(threadsuser Threadsuser) (string, error) {
 		return "", fmt.Errorf("JSON 解析錯誤: %v", err)
 	}
 
-	fmt.Printf("解析後的結果: %+v\n", result)
-
 	if errMsg, ok := result["error"].(float64); ok {
 		return "", fmt.Errorf("API 錯誤代碼: %f", errMsg)
 	}
@@ -156,12 +148,11 @@ func GetThreadsUserId(threadsuser Threadsuser) (string, error) {
 	if errDesc, ok := result["errorDescription"].(string); ok {
 		return "", fmt.Errorf("API 錯誤描述: %s", errDesc)
 	}
-	fmt.Println(result)
 	userId := result["payload"].(map[string]interface{})["payloads"].(map[string]interface{})[pathName].(map[string]interface{})["result"].(map[string]interface{})["exports"].(map[string]interface{})["rootView"].(map[string]interface{})["props"].(map[string]interface{})["user_id"].(string)
 	return userId, nil
 }
 
-func GetThreadsPosts(threadsuser Threadsuser) {
+func GetThreadsPosts(threadsuser Threadsuser) (string, error) {
 	// 	curl --request POST \
 	//   --url https://www.threads.net/api/graphql \
 	//   --header 'user-agent: threads-client' \
@@ -169,5 +160,57 @@ func GetThreadsPosts(threadsuser Threadsuser) {
 	//   --header 'content-type: application/x-www-form-urlencoded' \
 	//   --data 'variables={"userID":"314216"}' \
 	//   --data doc_id=6232751443445612
-	fmt.Println(threadsuser.Username)
+	tokens, err := getToken(threadsuser.Username)
+	if err != nil {
+		return "", err
+	}
+	threadsUserId, err := GetThreadsUserId(threadsuser, *tokens)
+	if err != nil {
+		return "", err
+	}
+
+	variables := map[string]string{"userID": threadsUserId}
+	variablesJSON, err := json.Marshal(variables)
+	if err != nil {
+		return "", err
+	}
+
+	payload := url.Values{
+		"variables": {string(variablesJSON)},
+		"doc_id":    {"6232751443445612"},
+		"lsd":       {tokens.LSD},
+	}
+
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", ApiUrl, strings.NewReader(payload.Encode()))
+
+	headers := ThreadHeader(threadsuser.Username, tokens.LSD)
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var result interface{}
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return "", err
+	}
+
+	return string(body), nil
 }
