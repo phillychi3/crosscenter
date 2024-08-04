@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/tidwall/gjson"
 	"golang.org/x/net/html"
 )
 
@@ -19,6 +20,15 @@ const (
 	USER_AGENT = "Barcelona 289.0.0.77.109 Android"
 	asbdId     = "129477"
 )
+
+type ThreadsPost struct {
+	author  string
+	title   string
+	context string
+	url     string
+	images  []string
+	Data    uint64
+}
 
 type Threadsuser struct {
 	Username string
@@ -152,7 +162,7 @@ func GetThreadsUserId(threadsuser Threadsuser, lsdtoken Tokens) (string, error) 
 	return userId, nil
 }
 
-func GetThreadsPosts(threadsuser Threadsuser) (string, error) {
+func GetThreadsPosts(threadsuser Threadsuser) ([]ThreadsPost, error) {
 	// 	curl --request POST \
 	//   --url https://www.threads.net/api/graphql \
 	//   --header 'user-agent: threads-client' \
@@ -162,17 +172,17 @@ func GetThreadsPosts(threadsuser Threadsuser) (string, error) {
 	//   --data doc_id=6232751443445612
 	tokens, err := getToken(threadsuser.Username)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	threadsUserId, err := GetThreadsUserId(threadsuser, *tokens)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	variables := map[string]string{"userID": threadsUserId}
 	variablesJSON, err := json.Marshal(variables)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	payload := url.Values{
@@ -192,25 +202,49 @@ func GetThreadsPosts(threadsuser Threadsuser) (string, error) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var result interface{}
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		return "", err
+		return nil, err
+	}
+	threads := gjson.Get(string(body), "data.mediaData.threads")
+	if !threads.Exists() {
+		return nil, errors.New("threads not found")
 	}
 
-	return string(body), nil
+	var threadposts []ThreadsPost
+
+	threads.ForEach(func(_, thread gjson.Result) bool {
+		posts := thread.Get(fmt.Sprintf(`thread_items.#(post.user.username=="%s")#`, threadsuser.Username))
+
+		posts.ForEach(func(_, post gjson.Result) bool {
+			threadpost := ThreadsPost{
+				author:  post.Get("post.user.username").String(),
+				title:   post.Get("post.caption.text").String(),
+				context: post.Get("post.caption.text").String(),
+				url:     post.Get("post.code").String(),
+				Data:    post.Get("post.taken_at").Uint(),
+				images:  []string{},
+			}
+			threadposts = append(threadposts, threadpost)
+			return true
+		})
+		return true
+	})
+
+	return threadposts, nil
 }
