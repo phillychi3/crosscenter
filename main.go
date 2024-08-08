@@ -6,12 +6,22 @@ import (
 )
 
 func main() {
-	threadeuser := sites.Threadsuser{
-		Username: "instagram",
+	// threadeuser := sites.Threadsuser{
+	// 	Username: "instagram",
+	// }
+	// result, err := sites.GetThreadsPosts(threadeuser)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	// fmt.Println(result)
+
+	twitteruser := sites.Twitteruser{
+		Username: "Yuco_VRC",
 	}
-	result, err := sites.GetThreadsPosts(threadeuser)
+	result, err := sites.GetTwitterPosts(twitteruser)
 	if err != nil {
 		fmt.Println(err)
 	}
 	fmt.Println(result)
+
 }
