@@ -3,6 +3,8 @@ package main
 import (
 	"crosscenter/sites"
 	"fmt"
+
+	"github.com/k0kubun/pp/v3"
 )
 
 func main() {
@@ -22,6 +24,6 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(result)
+	pp.Print(result)
 
 }

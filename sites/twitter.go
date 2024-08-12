@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/tidwall/gjson"
 )
@@ -15,6 +16,15 @@ import (
 type Twitteruser struct {
 	Username string
 	Token    string
+}
+
+type TwitterPost struct {
+	author    string
+	author_id string
+	context   string
+	url       string
+	images    []string
+	Data      uint64
 }
 
 func getGuestToken() (string, error) {
@@ -115,13 +125,12 @@ func getTwitterUserId(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println(string(body))
 
 	userId := gjson.GetBytes(body, "data.user.result.rest_id").String()
 	return userId, nil
 }
 
-func GetTwitterPosts(twitter Twitteruser) ([]map[string]string, error) {
+func GetTwitterPosts(twitter Twitteruser) ([]TwitterPost, error) {
 	guesttoken, err := getGuestToken()
 	if err != nil {
 		return nil, err
@@ -167,8 +176,6 @@ func GetTwitterPosts(twitter Twitteruser) ([]map[string]string, error) {
 		return nil, err
 	}
 
-	fmt.Println(userid)
-
 	variables := map[string]interface{}{
 		"userId":                 userid,
 		"count":                  20,
@@ -212,8 +219,6 @@ func GetTwitterPosts(twitter Twitteruser) ([]map[string]string, error) {
 
 	jsonResult := gjson.ParseBytes(body)
 
-	fmt.Println(jsonResult)
-
 	if !jsonResult.Get("data.user").Exists() {
 		return nil, fmt.Errorf("cannot find user")
 	}
@@ -223,12 +228,28 @@ func GetTwitterPosts(twitter Twitteruser) ([]map[string]string, error) {
 		return nil, fmt.Errorf("cannot load user timeline")
 	}
 
-	var listOfPosts []map[string]string
+	var listOfPosts []TwitterPost
 
-	entries := instructions.Get("2.entries")
-	entries.ForEach(func(key, value gjson.Result) bool {
-		fullText := value.Get("content.itemContent.tweet_results.result.legacy.full_text").String()
-		listOfPosts = append(listOfPosts, map[string]string{"context": fullText})
+	entries := instructions.Get("1.entries")
+	entries.ForEach(func(_, value gjson.Result) bool {
+		t, err := time.Parse("Mon Jan 2 15:04:05 -0700 2006", value.Get("content.itemContent.tweet_results.result.legacy.created_at").String())
+		if err != nil {
+			t = time.Now()
+		}
+		images := []string{}
+		value.Get("content.itemContent.tweet_results.result.legacy.entities.media").ForEach(func(_, image gjson.Result) bool {
+			images = append(images, image.Get("media_url_https").String())
+			return true
+		})
+		twitterpost := TwitterPost{
+			author:    value.Get("content.itemContent.tweet_results.result.core.user_results.result.legacy.name").String(),
+			author_id: value.Get("content.itemContent.tweet_results.result.core.user_results.result.legacy.screen_name").String(),
+			context:   value.Get("content.itemContent.tweet_results.result.legacy.full_text").String(),
+			url:       "https://x.com/" + value.Get("content.itemContent.tweet_results.result.core.user_results.result.legacy.screen_name").String() + "/status/" + value.Get("content.itemContent.tweet_results.result.rest_id").String(),
+			Data:      uint64(t.Unix()),
+			images:    images,
+		}
+		listOfPosts = append(listOfPosts, twitterpost)
 		return true
 	})
 
