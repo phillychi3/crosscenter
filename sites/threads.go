@@ -30,7 +30,8 @@ type ThreadsPost struct {
 }
 
 type Threadsuser struct {
-	Username string
+	Username     string
+	access_token string
 }
 
 type Tokens struct {
@@ -247,7 +248,7 @@ func GetThreadsPosts(threadsuser Threadsuser) ([]ThreadsPost, error) {
 	return threadposts, nil
 }
 
-func createThreadsSingleMediaContainer(user Threadsuser) {
+func createThreadsSingleMediaContainer(user Threadsuser) (string, error) {
 	containerurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads", user.Username)
 	payload := url.Values{
 		"media_type":   {"TEXT"},
@@ -257,63 +258,66 @@ func createThreadsSingleMediaContainer(user Threadsuser) {
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", containerurl, strings.NewReader(payload.Encode()))
 	if err != nil {
-		return
+		return "", err
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return
+		return "", err
 	}
 	id := gjson.Get(string(body), "id").String()
 	fmt.Println(id)
+	return id, nil
 
 }
 
-func createThreadsCarouselContainer(user Threadsuser, mediaContainers []string) {
+func createThreadsCarouselContainer(user Threadsuser, mediaContainers []string) (string, error) {
 	containerurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads", user.Username)
 	payload := url.Values{
 		"media_type":   {"CAROUSEL"},
 		"children":     {strings.Join(mediaContainers, ",")},
-		"access_token": {""},
+		"access_token": {user.access_token},
 	}
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", containerurl, strings.NewReader(payload.Encode()))
 	if err != nil {
-		return
+		return "", err
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return
+		return "", err
 	}
 	id := gjson.Get(string(body), "id").String()
 	fmt.Println(id)
+	return id, nil
 }
 
-func SendThreadPost(user Threadsuser) {
+func SendThreadPost(user Threadsuser) error {
 	sendurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads_publish", user.Username)
 	payload := url.Values{
 		"creation_id":  {"123456"},
-		"access_token": {""},
+		"access_token": {user.access_token},
 	}
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", sendurl, strings.NewReader(payload.Encode()))
 	if err != nil {
-		return
+		return err
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return
+		return err
 	}
 	defer resp.Body.Close()
+	return nil
 }
