@@ -246,3 +246,74 @@ func GetThreadsPosts(threadsuser Threadsuser) ([]ThreadsPost, error) {
 
 	return threadposts, nil
 }
+
+func createThreadsSingleMediaContainer(user Threadsuser) {
+	containerurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads", user.Username)
+	payload := url.Values{
+		"media_type":   {"TEXT"},
+		"text":         {"Hello, World!"},
+		"access_token": {""},
+	}
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", containerurl, strings.NewReader(payload.Encode()))
+	if err != nil {
+		return
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	id := gjson.Get(string(body), "id").String()
+	fmt.Println(id)
+
+}
+
+func createThreadsCarouselContainer(user Threadsuser, mediaContainers []string) {
+	containerurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads", user.Username)
+	payload := url.Values{
+		"media_type":   {"CAROUSEL"},
+		"children":     {strings.Join(mediaContainers, ",")},
+		"access_token": {""},
+	}
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", containerurl, strings.NewReader(payload.Encode()))
+	if err != nil {
+		return
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	id := gjson.Get(string(body), "id").String()
+	fmt.Println(id)
+}
+
+func SendThreadPost(user Threadsuser) {
+	sendurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads_publish", user.Username)
+	payload := url.Values{
+		"creation_id":  {"123456"},
+		"access_token": {""},
+	}
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", sendurl, strings.NewReader(payload.Encode()))
+	if err != nil {
+		return
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+}
