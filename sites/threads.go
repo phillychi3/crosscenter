@@ -23,14 +23,14 @@ const (
 
 type ThreadsPost struct {
 	author  string
-	context string
+	content string
 	url     string
 	images  []string
 	Data    uint64
 }
 
 func (t ThreadsPost) GetAuthor() string   { return t.author }
-func (t ThreadsPost) GetContext() string  { return t.context }
+func (t ThreadsPost) GetContent() string  { return t.content }
 func (t ThreadsPost) GetURL() string      { return t.url }
 func (t ThreadsPost) GetImages() []string { return t.images }
 func (t ThreadsPost) GetData() uint64     { return t.Data }
@@ -240,7 +240,7 @@ func GetThreadsPosts(threadsuser Threadsuser) ([]ThreadsPost, error) {
 		posts.ForEach(func(_, post gjson.Result) bool {
 			threadpost := ThreadsPost{
 				author:  post.Get("post.user.username").String(),
-				context: post.Get("post.caption.text").String(),
+				content: post.Get("post.caption.text").String(),
 				url:     post.Get("post.code").String(),
 				Data:    post.Get("post.taken_at").Uint(),
 				images:  []string{},

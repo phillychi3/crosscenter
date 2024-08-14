@@ -21,14 +21,14 @@ type Twitteruser struct {
 type TwitterPost struct {
 	author    string
 	author_id string
-	context   string
+	content   string
 	url       string
 	images    []string
 	Data      uint64
 }
 
 func (t TwitterPost) GetAuthor() string   { return t.author }
-func (t TwitterPost) GetContext() string  { return t.context }
+func (t TwitterPost) GetContent() string  { return t.content }
 func (t TwitterPost) GetURL() string      { return t.url }
 func (t TwitterPost) GetImages() []string { return t.images }
 func (t TwitterPost) GetData() uint64     { return t.Data }
@@ -250,7 +250,7 @@ func GetTwitterPosts(twitter Twitteruser) ([]TwitterPost, error) {
 		twitterpost := TwitterPost{
 			author:    value.Get("content.itemContent.tweet_results.result.core.user_results.result.legacy.name").String(),
 			author_id: value.Get("content.itemContent.tweet_results.result.core.user_results.result.legacy.screen_name").String(),
-			context:   value.Get("content.itemContent.tweet_results.result.legacy.full_text").String(),
+			content:   value.Get("content.itemContent.tweet_results.result.legacy.full_text").String(),
 			url:       "https://x.com/" + value.Get("content.itemContent.tweet_results.result.core.user_results.result.legacy.screen_name").String() + "/status/" + value.Get("content.itemContent.tweet_results.result.rest_id").String(),
 			Data:      uint64(t.Unix()),
 			images:    images,

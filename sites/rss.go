@@ -9,14 +9,14 @@ type RSS struct {
 
 type RSSPost struct {
 	author  string
-	context string
+	content string
 	url     string
 	images  []string
 	Data    uint64
 }
 
 func (t RSSPost) GetAuthor() string   { return t.author }
-func (t RSSPost) GetContext() string  { return t.context }
+func (t RSSPost) GetContent() string  { return t.content }
 func (t RSSPost) GetURL() string      { return t.url }
 func (t RSSPost) GetImages() []string { return t.images }
 func (t RSSPost) GetData() uint64     { return t.Data }
@@ -31,7 +31,7 @@ func GetRSS(rss RSS) ([]RSSPost, error) {
 	for _, item := range feed.Items {
 		post := RSSPost{
 			author:  item.Author.Name,
-			context: item.Content,
+			content: item.Content,
 			url:     item.Link,
 			images:  []string{item.Image.URL},
 			Data:    uint64(item.PublishedParsed.Unix()),
