@@ -27,6 +27,12 @@ type TwitterPost struct {
 	Data      uint64
 }
 
+func (t TwitterPost) GetAuthor() string   { return t.author }
+func (t TwitterPost) GetContext() string  { return t.context }
+func (t TwitterPost) GetURL() string      { return t.url }
+func (t TwitterPost) GetImages() []string { return t.images }
+func (t TwitterPost) GetData() uint64     { return t.Data }
+
 func getGuestToken() (string, error) {
 	url := "https://api.twitter.com/1.1/guest/activate.json"
 

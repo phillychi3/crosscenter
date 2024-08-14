@@ -29,6 +29,12 @@ type ThreadsPost struct {
 	Data    uint64
 }
 
+func (t ThreadsPost) GetAuthor() string   { return t.author }
+func (t ThreadsPost) GetContext() string  { return t.context }
+func (t ThreadsPost) GetURL() string      { return t.url }
+func (t ThreadsPost) GetImages() []string { return t.images }
+func (t ThreadsPost) GetData() uint64     { return t.Data }
+
 type Threadsuser struct {
 	Username     string
 	access_token string

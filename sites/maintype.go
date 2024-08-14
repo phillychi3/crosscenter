@@ -1,10 +1,9 @@
 package sites
 
-type PostType struct {
-	author    string
-	author_id string
-	context   string
-	url       string
-	images    []string
-	Data      uint64
+type PostInterface interface {
+	GetAuthor() string
+	GetContext() string
+	GetURL() string
+	GetImages() []string
+	GetData() uint64
 }
