@@ -1,13 +1,16 @@
 package sites
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
+	"github.com/dghubble/oauth1"
 	"github.com/tidwall/gjson"
 )
 
@@ -262,6 +265,39 @@ func GetTwitterPosts(twitter Twitteruser) ([]TwitterPost, error) {
 	return listOfPosts, nil
 }
 
-func PostTwitterPost() {
+func PostTwitterPost(post PostInterface) error {
 
+	consumerKey := os.Getenv("CONSUMER_KEY")
+	consumerSecret := os.Getenv("CONSUMER_SECRET")
+	accessToken := os.Getenv("ACCESS_TOKEN")
+	accessTokenSecret := os.Getenv("ACCESS_TOKEN_SECRET")
+
+	config := oauth1.NewConfig(consumerKey, consumerSecret)
+	token := oauth1.NewToken(accessToken, accessTokenSecret)
+
+	httpClient := config.Client(oauth1.NoContext, token)
+
+	tweet := map[string]string{
+		"text": "Hello World! auto post from crosscenter",
+	}
+	// tweet := map[string]string{
+	// 	"text":post.GetContent(),
+	// }
+	jsonStr, _ := json.Marshal(tweet)
+
+	resp, err := httpClient.Post(
+		"https://api.twitter.com/2/tweets",
+		"application/json",
+		bytes.NewBuffer(jsonStr),
+	)
+	if err != nil {
+		fmt.Println("Error sending tweet:", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Println("Response:", string(body))
+
+	return nil
 }

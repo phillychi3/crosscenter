@@ -4,6 +4,7 @@ import (
 	"crosscenter/sites"
 	"fmt"
 
+	_ "github.com/joho/godotenv/autoload"
 	"github.com/k0kubun/pp/v3"
 )
 
