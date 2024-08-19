@@ -1,0 +1,12 @@
+twitter:
+  ENABLE_SYNC: true
+  ENABLE_POST: true
+  CONSUMER_KEY:
+  CONSUMER_SECRET:
+  ACCESS_TOKEN:
+  ACCESS_TOKEN_SECRET:
+threads:
+  ENABLE_SYNC: true
+  ENABLE_POST: true
+  client_secret:
+  access_token:

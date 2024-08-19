@@ -7,19 +7,15 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
+
+	"crosscenter/core"
 
 	"github.com/dghubble/oauth1"
 	"github.com/tidwall/gjson"
 )
 
 // 類型 twitter
-
-type Twitteruser struct {
-	Username string
-	Token    string
-}
 
 type TwitterPost struct {
 	author    string
@@ -139,7 +135,7 @@ func getTwitterUserId(name string) (string, error) {
 	return userId, nil
 }
 
-func GetTwitterPosts(twitter Twitteruser) ([]TwitterPost, error) {
+func GetTwitterPosts(setting core.SettingYaml) ([]TwitterPost, error) {
 	guesttoken, err := getGuestToken()
 	if err != nil {
 		return nil, err
@@ -180,7 +176,7 @@ func GetTwitterPosts(twitter Twitteruser) ([]TwitterPost, error) {
 		"x-csrf-token":  "25ea9d09196a6ba850201d47d7e75733",
 	}
 
-	userid, err := getTwitterUserId(twitter.Username)
+	userid, err := getTwitterUserId(setting.Twitter.Username)
 	if err != nil {
 		return nil, err
 	}
@@ -265,12 +261,12 @@ func GetTwitterPosts(twitter Twitteruser) ([]TwitterPost, error) {
 	return listOfPosts, nil
 }
 
-func PostTwitterPost(post PostInterface) error {
+func PostTwitterPost(post PostInterface, setting core.SettingYaml) error {
 
-	consumerKey := os.Getenv("CONSUMER_KEY")
-	consumerSecret := os.Getenv("CONSUMER_SECRET")
-	accessToken := os.Getenv("ACCESS_TOKEN")
-	accessTokenSecret := os.Getenv("ACCESS_TOKEN_SECRET")
+	consumerKey := setting.Twitter.CONSUMERKEY
+	consumerSecret := setting.Twitter.CONSUMERSECRET
+	accessToken := setting.Twitter.ACCESSTOKEN
+	accessTokenSecret := setting.Twitter.ACCESSTOKENSECRET
 
 	config := oauth1.NewConfig(consumerKey, consumerSecret)
 	token := oauth1.NewToken(accessToken, accessTokenSecret)

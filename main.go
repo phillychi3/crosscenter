@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crosscenter/core"
 	"crosscenter/sites"
 	"fmt"
 
@@ -17,11 +18,8 @@ func main() {
 	// 	fmt.Println(err)
 	// }
 	// fmt.Println(result)
-
-	twitteruser := sites.Twitteruser{
-		Username: "Yuco_VRC",
-	}
-	result, err := sites.GetTwitterPosts(twitteruser)
+	setting := core.LoadSetting()
+	result, err := sites.GetTwitterPosts(setting)
 	if err != nil {
 		fmt.Println(err)
 	}

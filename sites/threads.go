@@ -1,6 +1,7 @@
 package sites
 
 import (
+	"crosscenter/core"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/peterbourgon/diskv/v3"
 	"github.com/tidwall/gjson"
 	"golang.org/x/net/html"
 )
@@ -34,11 +36,6 @@ func (t ThreadsPost) GetContent() string  { return t.content }
 func (t ThreadsPost) GetURL() string      { return t.url }
 func (t ThreadsPost) GetImages() []string { return t.images }
 func (t ThreadsPost) GetData() uint64     { return t.Data }
-
-type Threadsuser struct {
-	Username     string
-	access_token string
-}
 
 type Tokens struct {
 	LSD string
@@ -114,9 +111,9 @@ func ThreadHeader(user string, lsd string) map[string]string {
 	}
 }
 
-func GetThreadsUserId(threadsuser Threadsuser, lsdtoken Tokens) (string, error) {
+func GetThreadsUserId(username string, lsdtoken Tokens) (string, error) {
 	lsd := lsdtoken.LSD
-	pathName := fmt.Sprintf("/@%s", threadsuser.Username)
+	pathName := fmt.Sprintf("/@%s", username)
 	payload := url.Values{
 		"route_urls[0]":     {pathName},
 		"routing_namespace": {"barcelona_web"},
@@ -132,7 +129,7 @@ func GetThreadsUserId(threadsuser Threadsuser, lsdtoken Tokens) (string, error) 
 		return "", err
 	}
 
-	headers := ThreadHeader(threadsuser.Username, lsd)
+	headers := ThreadHeader(username, lsd)
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}
@@ -168,7 +165,7 @@ func GetThreadsUserId(threadsuser Threadsuser, lsdtoken Tokens) (string, error) 
 	return userId, nil
 }
 
-func GetThreadsPosts(threadsuser Threadsuser) ([]ThreadsPost, error) {
+func GetThreadsPosts(setting core.SettingYaml) ([]ThreadsPost, error) {
 	// 	curl --request POST \
 	//   --url https://www.threads.net/api/graphql \
 	//   --header 'user-agent: threads-client' \
@@ -176,11 +173,11 @@ func GetThreadsPosts(threadsuser Threadsuser) ([]ThreadsPost, error) {
 	//   --header 'content-type: application/x-www-form-urlencoded' \
 	//   --data 'variables={"userID":"314216"}' \
 	//   --data doc_id=6232751443445612
-	tokens, err := getToken(threadsuser.Username)
+	tokens, err := getToken(setting.Twitter.Username)
 	if err != nil {
 		return nil, err
 	}
-	threadsUserId, err := GetThreadsUserId(threadsuser, *tokens)
+	threadsUserId, err := GetThreadsUserId(setting.Threads.Username, *tokens)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +197,7 @@ func GetThreadsPosts(threadsuser Threadsuser) ([]ThreadsPost, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", ApiUrl, strings.NewReader(payload.Encode()))
 
-	headers := ThreadHeader(threadsuser.Username, tokens.LSD)
+	headers := ThreadHeader(setting.Twitter.Username, tokens.LSD)
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}
@@ -235,7 +232,7 @@ func GetThreadsPosts(threadsuser Threadsuser) ([]ThreadsPost, error) {
 	var threadposts []ThreadsPost
 
 	threads.ForEach(func(_, thread gjson.Result) bool {
-		posts := thread.Get(fmt.Sprintf(`thread_items.#(post.user.username=="%s")#`, threadsuser.Username))
+		posts := thread.Get(fmt.Sprintf(`thread_items.#(post.user.username=="%s")#`, setting.Twitter.Username))
 
 		posts.ForEach(func(_, post gjson.Result) bool {
 			threadpost := ThreadsPost{
@@ -254,13 +251,22 @@ func GetThreadsPosts(threadsuser Threadsuser) ([]ThreadsPost, error) {
 	return threadposts, nil
 }
 
-func createThreadsSingleMediaContainer(user Threadsuser) (string, error) {
-	containerurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads", user.Username)
+func createThreadsSingleMediaContainer(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
+	containerurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads", setting.Threads.Username)
+	access_token, err := db.Read("threads_access_token")
+	if err != nil {
+		return "", err
+	}
 	payload := url.Values{
 		"media_type":   {"TEXT"},
 		"text":         {"Hello, World!"},
-		"access_token": {""},
+		"access_token": {string(access_token)},
 	}
+	// payload := url.Values{
+	// 	"media_type":   {"TEXT"},
+	// 	"text":         {post.GetContent()},
+	// 	"access_token": {string(access_token)},
+	// }
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", containerurl, strings.NewReader(payload.Encode()))
 	if err != nil {
@@ -282,12 +288,16 @@ func createThreadsSingleMediaContainer(user Threadsuser) (string, error) {
 
 }
 
-func createThreadsCarouselContainer(user Threadsuser, mediaContainers []string) (string, error) {
-	containerurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads", user.Username)
+func createThreadsCarouselContainer(post PostInterface, setting core.SettingYaml, mediaContainers []string, db *diskv.Diskv) (string, error) {
+	containerurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads", setting.Threads.Username)
+	access_token, err := db.Read("threads_access_token")
+	if err != nil {
+		return "", err
+	}
 	payload := url.Values{
 		"media_type":   {"CAROUSEL"},
 		"children":     {strings.Join(mediaContainers, ",")},
-		"access_token": {user.access_token},
+		"access_token": {string(access_token)},
 	}
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", containerurl, strings.NewReader(payload.Encode()))
@@ -309,11 +319,57 @@ func createThreadsCarouselContainer(user Threadsuser, mediaContainers []string) 
 	return id, nil
 }
 
-func SendThreadPost(user Threadsuser) error {
-	sendurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads_publish", user.Username)
+func reflashaccesstoken(setting core.SettingYaml, db *diskv.Diskv) error {
+	url := fmt.Sprintf("https://graph.threads.net/refresh_access_token?grant_type=th_refresh_token&access_token=%s", setting.Threads.AccessToken)
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	access_token := gjson.Get(string(body), "access_token").String()
+	db.Write("threads_access_token", []byte(access_token))
+	return nil
+}
+
+func getlongaccesstoken(setting core.SettingYaml, db *diskv.Diskv) error {
+	url := fmt.Sprintf("https://graph.threads.net/access_token?grant_type=th_exchange_token&client_secret=%s&access_token=%s", setting.Threads.ClientSecret, setting.Threads.AccessToken)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	access_token := gjson.Get(string(body), "access_token").String()
+	db.Write("threads_access_token", []byte(access_token))
+	return nil
+}
+
+func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) error {
+	sendurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads_publish", setting.Threads.Username)
+	access_token, err := db.Read("threads_access_token")
+	if err != nil {
+		err = getlongaccesstoken(setting, db)
+		if err != nil {
+			return err
+		}
+	}
+	postid, err := createThreadsSingleMediaContainer(post, setting, db)
+	if err != nil {
+		return err
+	}
 	payload := url.Values{
-		"creation_id":  {"123456"},
-		"access_token": {user.access_token},
+		"creation_id":  {postid},
+		"access_token": {string(access_token)},
 	}
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", sendurl, strings.NewReader(payload.Encode()))
