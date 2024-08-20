@@ -29,6 +29,7 @@ type ThreadsPost struct {
 	url     string
 	images  []string
 	Data    uint64
+	id      string
 }
 
 func (t ThreadsPost) GetAuthor() string   { return t.author }
@@ -36,6 +37,7 @@ func (t ThreadsPost) GetContent() string  { return t.content }
 func (t ThreadsPost) GetURL() string      { return t.url }
 func (t ThreadsPost) GetImages() []string { return t.images }
 func (t ThreadsPost) GetData() uint64     { return t.Data }
+func (t ThreadsPost) GetId() string       { return t.id }
 
 type Tokens struct {
 	LSD string
@@ -173,7 +175,7 @@ func GetThreadsPosts(setting core.SettingYaml) ([]ThreadsPost, error) {
 	//   --header 'content-type: application/x-www-form-urlencoded' \
 	//   --data 'variables={"userID":"314216"}' \
 	//   --data doc_id=6232751443445612
-	tokens, err := getToken(setting.Twitter.Username)
+	tokens, err := getToken(setting.Threads.Username)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +199,7 @@ func GetThreadsPosts(setting core.SettingYaml) ([]ThreadsPost, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", ApiUrl, strings.NewReader(payload.Encode()))
 
-	headers := ThreadHeader(setting.Twitter.Username, tokens.LSD)
+	headers := ThreadHeader(setting.Threads.Username, tokens.LSD)
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}
@@ -232,16 +234,30 @@ func GetThreadsPosts(setting core.SettingYaml) ([]ThreadsPost, error) {
 	var threadposts []ThreadsPost
 
 	threads.ForEach(func(_, thread gjson.Result) bool {
-		posts := thread.Get(fmt.Sprintf(`thread_items.#(post.user.username=="%s")#`, setting.Twitter.Username))
+		posts := thread.Get(fmt.Sprintf(`thread_items.#(post.user.username=="%s")#`, setting.Threads.Username))
 
 		posts.ForEach(func(_, post gjson.Result) bool {
-			threadpost := ThreadsPost{
-				author:  post.Get("post.user.username").String(),
-				content: post.Get("post.caption.text").String(),
-				url:     post.Get("post.code").String(),
-				Data:    post.Get("post.taken_at").Uint(),
-				images:  []string{},
+			postData := post.Get("post")
+
+			var images []string
+			if postData.Get("carousel_media_count").Type != gjson.Null {
+				postData.Get("carousel_media").ForEach(func(_, media gjson.Result) bool {
+					images = append(images, media.Get("image_versions2.candidates.0.url").String())
+					return true
+				})
+			} else {
+				images = append(images, postData.Get("image_versions2.candidates.0.url").String())
 			}
+
+			threadpost := ThreadsPost{
+				author:  postData.Get("user.username").String(),
+				content: postData.Get("caption.text").String(),
+				url:     "https://www.threads.net/@" + setting.Threads.Username + "/post/" + postData.Get("code").String(),
+				Data:    postData.Get("taken_at").Uint(),
+				images:  images,
+				id:      postData.Get("code").String(),
+			}
+
 			threadposts = append(threadposts, threadpost)
 			return true
 		})

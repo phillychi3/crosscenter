@@ -12,6 +12,7 @@ type PostInterface interface {
 	GetURL() string
 	GetImages() []string
 	GetData() uint64
+	GetID() string
 }
 
 type SocialMediaPoster interface {

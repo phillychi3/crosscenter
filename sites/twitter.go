@@ -25,6 +25,7 @@ type TwitterPost struct {
 	url       string
 	images    []string
 	Data      uint64
+	id        string
 }
 
 func (t TwitterPost) GetAuthor() string   { return t.author }
@@ -32,6 +33,7 @@ func (t TwitterPost) GetContent() string  { return t.content }
 func (t TwitterPost) GetURL() string      { return t.url }
 func (t TwitterPost) GetImages() []string { return t.images }
 func (t TwitterPost) GetData() uint64     { return t.Data }
+func (t TwitterPost) GetId() string       { return t.id }
 
 func getGuestToken() (string, error) {
 	url := "https://api.twitter.com/1.1/guest/activate.json"
@@ -254,6 +256,7 @@ func GetTwitterPosts(setting core.SettingYaml) ([]TwitterPost, error) {
 			url:       "https://x.com/" + value.Get("content.itemContent.tweet_results.result.core.user_results.result.legacy.screen_name").String() + "/status/" + value.Get("content.itemContent.tweet_results.result.rest_id").String(),
 			Data:      uint64(t.Unix()),
 			images:    images,
+			id:        value.Get("content.itemContent.tweet_results.result.rest_id").String(),
 		}
 		listOfPosts = append(listOfPosts, twitterpost)
 		return true

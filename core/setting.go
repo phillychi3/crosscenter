@@ -9,7 +9,7 @@ import (
 
 type SettingYaml struct {
 	Twitter struct {
-		Username          string `yaml:"USERNAME"`
+		Username          string `yaml:"Username"`
 		ENABLESYNC        bool   `yaml:"ENABLE_SYNC"`
 		ENABLEPOST        bool   `yaml:"ENABLE_POST"`
 		CONSUMERKEY       string `yaml:"CONSUMER_KEY"`
@@ -18,7 +18,7 @@ type SettingYaml struct {
 		ACCESSTOKENSECRET string `yaml:"ACCESS_TOKEN_SECRET"`
 	} `yaml:"twitter"`
 	Threads struct {
-		Username     string `yaml:"USERNAME"`
+		Username     string `yaml:"Username"`
 		ENABLESYNC   bool   `yaml:"ENABLE_SYNC"`
 		ENABLEPOST   bool   `yaml:"ENABLE_POST"`
 		ClientSecret string `yaml:"Client_Secret"`
