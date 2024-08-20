@@ -16,7 +16,7 @@ type PostInterface interface {
 }
 
 type SocialMediaPoster interface {
-	Post(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) error
+	Post(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error)
 }
 
 var Medias = map[string]interface{}{

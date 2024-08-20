@@ -372,22 +372,22 @@ func getlongaccesstoken(setting core.SettingYaml, db *diskv.Diskv) error {
 
 type ThreadsPoster struct{}
 
-func (tp ThreadsPoster) Post(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) error {
+func (tp ThreadsPoster) Post(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
 	return SendThreadPost(post, setting, db)
 }
 
-func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) error {
+func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
 	sendurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads_publish", setting.Threads.Username)
 	access_token, err := db.Read("threads_access_token")
 	if err != nil {
 		err = getlongaccesstoken(setting, db)
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 	postid, err := createThreadsSingleMediaContainer(post, setting, db)
 	if err != nil {
-		return err
+		return "", err
 	}
 	payload := url.Values{
 		"creation_id":  {postid},
@@ -396,12 +396,17 @@ func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Disk
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", sendurl, strings.NewReader(payload.Encode()))
 	if err != nil {
-		return err
+		return "", err
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer resp.Body.Close()
-	return nil
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	id := gjson.Get(string(body), "id").String()
+	return id, nil
 }

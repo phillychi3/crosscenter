@@ -267,11 +267,11 @@ func GetTwitterPosts(setting core.SettingYaml) ([]TwitterPost, error) {
 
 type TwitterPoster struct{}
 
-func (tp TwitterPoster) Post(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) error {
+func (tp TwitterPoster) Post(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
 	return PostTwitterPost(post, setting)
 }
 
-func PostTwitterPost(post PostInterface, setting core.SettingYaml) error {
+func PostTwitterPost(post PostInterface, setting core.SettingYaml) (string, error) {
 
 	consumerKey := setting.Twitter.CONSUMERKEY
 	consumerSecret := setting.Twitter.CONSUMERSECRET
@@ -298,12 +298,12 @@ func PostTwitterPost(post PostInterface, setting core.SettingYaml) error {
 	)
 	if err != nil {
 		fmt.Println("Error sending tweet:", err)
-		return err
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
-	fmt.Println("Response:", string(body))
+	id := gjson.GetBytes(body, "data.id").String()
 
-	return nil
+	return id, nil
 }
