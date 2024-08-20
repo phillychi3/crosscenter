@@ -370,9 +370,9 @@ func getlongaccesstoken(setting core.SettingYaml, db *diskv.Diskv) error {
 	return nil
 }
 
-type ThreadPoster struct{}
+type ThreadsPoster struct{}
 
-func (tp ThreadPoster) Post(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) error {
+func (tp ThreadsPoster) Post(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) error {
 	return SendThreadPost(post, setting, db)
 }
 

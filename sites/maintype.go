@@ -18,3 +18,14 @@ type PostInterface interface {
 type SocialMediaPoster interface {
 	Post(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) error
 }
+
+var Medias = map[string]interface{}{
+	"twitter": GetTwitterPosts,
+	"threads": GetThreadsPosts,
+	"rss":     GetRSS,
+}
+
+var PostMedias = map[string]SocialMediaPoster{
+	"twitter": TwitterPoster{},
+	"threads": ThreadsPoster{},
+}
