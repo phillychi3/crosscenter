@@ -37,7 +37,7 @@ func (t ThreadsPost) GetContent() string  { return t.content }
 func (t ThreadsPost) GetURL() string      { return t.url }
 func (t ThreadsPost) GetImages() []string { return t.images }
 func (t ThreadsPost) GetData() uint64     { return t.Data }
-func (t ThreadsPost) GetId() string       { return t.id }
+func (t ThreadsPost) GetID() string       { return t.id }
 
 type Tokens struct {
 	LSD string
@@ -267,8 +267,12 @@ func GetThreadsPosts(setting core.SettingYaml) ([]ThreadsPost, error) {
 	return threadposts, nil
 }
 
-func createThreadsSingleMediaContainer(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
-	containerurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads", setting.Threads.Username)
+func createThreadsSingleTextContainer(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
+	userid, err := db.Read("threads_userid")
+	if err != nil {
+		return "", err
+	}
+	containerurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads", string(userid))
 	access_token, err := db.Read("threads_access_token")
 	if err != nil {
 		return "", err
@@ -288,6 +292,7 @@ func createThreadsSingleMediaContainer(post PostInterface, setting core.SettingY
 	if err != nil {
 		return "", err
 	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
@@ -298,14 +303,20 @@ func createThreadsSingleMediaContainer(post PostInterface, setting core.SettingY
 	if err != nil {
 		return "", err
 	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
+	}
 	id := gjson.Get(string(body), "id").String()
-	fmt.Println(id)
 	return id, nil
 
 }
 
 func createThreadsSingleImageMediaContainer(image string, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
-	containerurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads", setting.Threads.Username)
+	userid, err := db.Read("threads_userid")
+	if err != nil {
+		return "", err
+	}
+	containerurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads", string(userid))
 	access_token, err := db.Read("threads_access_token")
 	if err != nil {
 		return "", err
@@ -321,6 +332,7 @@ func createThreadsSingleImageMediaContainer(image string, setting core.SettingYa
 	if err != nil {
 		return "", err
 	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
@@ -331,14 +343,20 @@ func createThreadsSingleImageMediaContainer(image string, setting core.SettingYa
 	if err != nil {
 		return "", err
 	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
+	}
 	id := gjson.Get(string(body), "id").String()
-	fmt.Println(id)
 	return id, nil
 
 }
 
 func createThreadsCarouselContainer(post PostInterface, setting core.SettingYaml, mediaContainers []string, db *diskv.Diskv) (string, error) {
-	containerurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads", setting.Threads.Username)
+	userid, err := db.Read("threads_userid")
+	if err != nil {
+		return "", err
+	}
+	containerurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads", string(userid))
 	access_token, err := db.Read("threads_access_token")
 	if err != nil {
 		return "", err
@@ -354,6 +372,7 @@ func createThreadsCarouselContainer(post PostInterface, setting core.SettingYaml
 	if err != nil {
 		return "", err
 	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
@@ -364,8 +383,10 @@ func createThreadsCarouselContainer(post PostInterface, setting core.SettingYaml
 	if err != nil {
 		return "", err
 	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
+	}
 	id := gjson.Get(string(body), "id").String()
-	fmt.Println(id)
 	return id, nil
 }
 
@@ -404,6 +425,27 @@ func getlongaccesstoken(setting core.SettingYaml, db *diskv.Diskv) error {
 	return nil
 }
 
+func getUserIdFromThreadsApi(db *diskv.Diskv) (string, error) {
+	token, err := db.Read("threads_access_token")
+	if err != nil {
+		return "", err
+	}
+	url := "https://graph.threads.net/v1.0/me?fields=id&access_token=" + string(token)
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	id := gjson.Get(string(body), "id").String()
+	return id, nil
+
+}
+
 type ThreadsPoster struct{}
 
 func (tp ThreadsPoster) Post(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
@@ -411,7 +453,7 @@ func (tp ThreadsPoster) Post(post PostInterface, setting core.SettingYaml, db *d
 }
 
 func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
-	sendurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads_publish", setting.Threads.Username)
+
 	access_token, err := db.Read("threads_access_token")
 	if err != nil {
 		err = getlongaccesstoken(setting, db)
@@ -419,13 +461,21 @@ func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Disk
 			return "", err
 		}
 	}
-	var postid string
-	if len(post.GetImages()) != 0 {
-		postid, err = createThreadsSingleMediaContainer(post, setting, db)
+	userid, err := db.Read("threads_userid")
+	if err != nil {
+		userid, err := getUserIdFromThreadsApi(db)
 		if err != nil {
 			return "", err
 		}
-
+		db.Write("threads_userid", []byte(userid))
+	}
+	sendurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads_publish", string(userid))
+	var postid string
+	if len(post.GetImages()) == 0 {
+		postid, err = createThreadsSingleTextContainer(post, setting, db)
+		if err != nil {
+			return "", err
+		}
 	} else {
 		imagesid := []string{}
 		for _, image := range post.GetImages() {
@@ -436,6 +486,9 @@ func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Disk
 			imagesid = append(imagesid, id)
 		}
 		postid, err = createThreadsCarouselContainer(post, setting, imagesid, db)
+		if err != nil {
+			return "", err
+		}
 
 	}
 	payload := url.Values{
@@ -447,6 +500,7 @@ func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Disk
 	if err != nil {
 		return "", err
 	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
@@ -455,6 +509,9 @@ func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Disk
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
 	}
 	id := gjson.Get(string(body), "id").String()
 	return id, nil

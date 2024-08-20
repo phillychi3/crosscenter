@@ -12,6 +12,7 @@ type RSSPost struct {
 	url     string
 	images  []string
 	Data    uint64
+	Id      string
 }
 
 func (t RSSPost) GetAuthor() string   { return t.author }
@@ -19,6 +20,7 @@ func (t RSSPost) GetContent() string  { return t.content }
 func (t RSSPost) GetURL() string      { return t.url }
 func (t RSSPost) GetImages() []string { return t.images }
 func (t RSSPost) GetData() uint64     { return t.Data }
+func (t RSSPost) GetID() string       { return t.Id }
 
 func GetRSS(setting core.SettingYaml) ([]RSSPost, error) {
 	rssparse := gofeed.NewParser()
@@ -34,6 +36,7 @@ func GetRSS(setting core.SettingYaml) ([]RSSPost, error) {
 			url:     item.Link,
 			images:  []string{item.Image.URL},
 			Data:    uint64(item.PublishedParsed.Unix()),
+			Id:      item.GUID,
 		}
 		posts = append(posts, post)
 	}

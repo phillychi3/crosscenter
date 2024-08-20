@@ -19,21 +19,21 @@ import (
 // 類型 twitter
 
 type TwitterPost struct {
-	author    string
-	author_id string
-	content   string
-	url       string
-	images    []string
+	Author    string
+	Author_id string
+	Content   string
+	Url       string
+	Images    []string
 	Data      uint64
-	id        string
+	Id        string
 }
 
-func (t TwitterPost) GetAuthor() string   { return t.author }
-func (t TwitterPost) GetContent() string  { return t.content }
-func (t TwitterPost) GetURL() string      { return t.url }
-func (t TwitterPost) GetImages() []string { return t.images }
+func (t TwitterPost) GetAuthor() string   { return t.Author }
+func (t TwitterPost) GetContent() string  { return t.Content }
+func (t TwitterPost) GetURL() string      { return t.Url }
+func (t TwitterPost) GetImages() []string { return t.Images }
 func (t TwitterPost) GetData() uint64     { return t.Data }
-func (t TwitterPost) GetId() string       { return t.id }
+func (t TwitterPost) GetID() string       { return t.Id }
 
 func getGuestToken() (string, error) {
 	url := "https://api.twitter.com/1.1/guest/activate.json"
@@ -250,13 +250,13 @@ func GetTwitterPosts(setting core.SettingYaml) ([]TwitterPost, error) {
 			return true
 		})
 		twitterpost := TwitterPost{
-			author:    value.Get("content.itemContent.tweet_results.result.core.user_results.result.legacy.name").String(),
-			author_id: value.Get("content.itemContent.tweet_results.result.core.user_results.result.legacy.screen_name").String(),
-			content:   value.Get("content.itemContent.tweet_results.result.legacy.full_text").String(),
-			url:       "https://x.com/" + value.Get("content.itemContent.tweet_results.result.core.user_results.result.legacy.screen_name").String() + "/status/" + value.Get("content.itemContent.tweet_results.result.rest_id").String(),
+			Author:    value.Get("content.itemContent.tweet_results.result.core.user_results.result.legacy.name").String(),
+			Author_id: value.Get("content.itemContent.tweet_results.result.core.user_results.result.legacy.screen_name").String(),
+			Content:   value.Get("content.itemContent.tweet_results.result.legacy.full_text").String(),
+			Url:       "https://x.com/" + value.Get("content.itemContent.tweet_results.result.core.user_results.result.legacy.screen_name").String() + "/status/" + value.Get("content.itemContent.tweet_results.result.rest_id").String(),
 			Data:      uint64(t.Unix()),
-			images:    images,
-			id:        value.Get("content.itemContent.tweet_results.result.rest_id").String(),
+			Images:    images,
+			Id:        value.Get("content.itemContent.tweet_results.result.rest_id").String(),
 		}
 		listOfPosts = append(listOfPosts, twitterpost)
 		return true
