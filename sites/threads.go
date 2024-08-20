@@ -304,6 +304,39 @@ func createThreadsSingleMediaContainer(post PostInterface, setting core.SettingY
 
 }
 
+func createThreadsSingleImageMediaContainer(image string, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
+	containerurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads", setting.Threads.Username)
+	access_token, err := db.Read("threads_access_token")
+	if err != nil {
+		return "", err
+	}
+	payload := url.Values{
+		"media_type":       {"IMAGE"},
+		"is_carousel_item": {"true"},
+		"image_url":        {image},
+		"access_token":     {string(access_token)},
+	}
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", containerurl, strings.NewReader(payload.Encode()))
+	if err != nil {
+		return "", err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	id := gjson.Get(string(body), "id").String()
+	fmt.Println(id)
+	return id, nil
+
+}
+
 func createThreadsCarouselContainer(post PostInterface, setting core.SettingYaml, mediaContainers []string, db *diskv.Diskv) (string, error) {
 	containerurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads", setting.Threads.Username)
 	access_token, err := db.Read("threads_access_token")
@@ -313,6 +346,7 @@ func createThreadsCarouselContainer(post PostInterface, setting core.SettingYaml
 	payload := url.Values{
 		"media_type":   {"CAROUSEL"},
 		"children":     {strings.Join(mediaContainers, ",")},
+		"text":         {"Hello, World!"},
 		"access_token": {string(access_token)},
 	}
 	client := &http.Client{}
@@ -385,9 +419,24 @@ func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Disk
 			return "", err
 		}
 	}
-	postid, err := createThreadsSingleMediaContainer(post, setting, db)
-	if err != nil {
-		return "", err
+	var postid string
+	if len(post.GetImages()) != 0 {
+		postid, err = createThreadsSingleMediaContainer(post, setting, db)
+		if err != nil {
+			return "", err
+		}
+
+	} else {
+		imagesid := []string{}
+		for _, image := range post.GetImages() {
+			id, err := createThreadsSingleImageMediaContainer(image, setting, db)
+			if err != nil {
+				return "", err
+			}
+			imagesid = append(imagesid, id)
+		}
+		postid, err = createThreadsCarouselContainer(post, setting, imagesid, db)
+
 	}
 	payload := url.Values{
 		"creation_id":  {postid},
