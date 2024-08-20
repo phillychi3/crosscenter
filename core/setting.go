@@ -24,6 +24,11 @@ type SettingYaml struct {
 		ClientSecret string `yaml:"Client_Secret"`
 		AccessToken  string `yaml:"Access_Token"`
 	} `yaml:"threads"`
+	Rss struct {
+		Sitename   string `yaml:"Sitename"`
+		Url        string `yaml:"Url"`
+		ENABLESYNC bool   `yaml:"ENABLE_SYNC"`
+	} `yaml:"rss"`
 }
 
 func LoadSetting() SettingYaml {

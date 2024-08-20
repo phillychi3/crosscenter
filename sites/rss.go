@@ -1,11 +1,10 @@
 package sites
 
-import "github.com/mmcdole/gofeed"
+import (
+	"crosscenter/core"
 
-type RSS struct {
-	Sitename string
-	Url      string
-}
+	"github.com/mmcdole/gofeed"
+)
 
 type RSSPost struct {
 	author  string
@@ -21,9 +20,9 @@ func (t RSSPost) GetURL() string      { return t.url }
 func (t RSSPost) GetImages() []string { return t.images }
 func (t RSSPost) GetData() uint64     { return t.Data }
 
-func GetRSS(rss RSS) ([]RSSPost, error) {
+func GetRSS(setting core.SettingYaml) ([]RSSPost, error) {
 	rssparse := gofeed.NewParser()
-	feed, err := rssparse.ParseURL(rss.Url)
+	feed, err := rssparse.ParseURL(setting.Rss.Url)
 	if err != nil {
 		return nil, err
 	}
