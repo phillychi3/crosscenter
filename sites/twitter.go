@@ -12,6 +12,7 @@ import (
 	"crosscenter/core"
 
 	"github.com/dghubble/oauth1"
+	"github.com/peterbourgon/diskv/v3"
 	"github.com/tidwall/gjson"
 )
 
@@ -259,6 +260,12 @@ func GetTwitterPosts(setting core.SettingYaml) ([]TwitterPost, error) {
 	})
 
 	return listOfPosts, nil
+}
+
+type TwitterPoster struct{}
+
+func (tp TwitterPoster) Post(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) error {
+	return PostTwitterPost(post, setting)
 }
 
 func PostTwitterPost(post PostInterface, setting core.SettingYaml) error {

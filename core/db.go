@@ -4,7 +4,7 @@ import (
 	"github.com/peterbourgon/diskv/v3"
 )
 
-func db() *diskv.Diskv {
+func Getdb() *diskv.Diskv {
 	d := diskv.New(diskv.Options{
 		BasePath:     "dbdata",
 		CacheSizeMax: 1024 * 1024,

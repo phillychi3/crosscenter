@@ -354,6 +354,12 @@ func getlongaccesstoken(setting core.SettingYaml, db *diskv.Diskv) error {
 	return nil
 }
 
+type ThreadPoster struct{}
+
+func (tp ThreadPoster) Post(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) error {
+	return SendThreadPost(post, setting, db)
+}
+
 func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) error {
 	sendurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads_publish", setting.Threads.Username)
 	access_token, err := db.Read("threads_access_token")
