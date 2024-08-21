@@ -173,11 +173,13 @@ func GetTwitterPosts(setting core.SettingYaml) ([]PostInterface, error) {
 		"longform_notetweets_inline_media_enabled":                                true,
 		"responsive_web_enhance_cards_enabled":                                    false,
 	}
+
 	header := map[string]string{
-		"Content-Type":  "application/json",
-		"x-guest-token": guesttoken,
-		"authorization": "Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA",
-		"x-csrf-token":  "25ea9d09196a6ba850201d47d7e75733",
+		"Content-Type":           "application/json",
+		"x-guest-token":          guesttoken,
+		"'x-twitter-active-user": "yes",
+		"authorization":          "Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA",
+		"x-csrf-token":           "25ea9d09196a6ba850201d47d7e75733",
 	}
 
 	userid, err := getTwitterUserId(setting.Twitter.Username)
@@ -207,12 +209,29 @@ func GetTwitterPosts(setting core.SettingYaml) ([]PostInterface, error) {
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", reqURL, nil)
+
 	if err != nil {
 		return nil, err
 	}
 
-	for key, value := range header {
-		req.Header.Set(key, value)
+	if setting.Twitter.REACACCOUNTMODE {
+		for key, value := range header {
+			req.Header.Set(key, value)
+		}
+		req.Header.Set("x-csrf-token", setting.Twitter.Ct0)
+
+		req.AddCookie(&http.Cookie{
+			Name:  "auth_token",
+			Value: setting.Twitter.Auth_token,
+		})
+		req.AddCookie(&http.Cookie{
+			Name:  "ct0",
+			Value: setting.Twitter.Ct0,
+		})
+	} else {
+		for key, value := range header {
+			req.Header.Set(key, value)
+		}
 	}
 
 	resp, err := client.Do(req)
@@ -239,8 +258,13 @@ func GetTwitterPosts(setting core.SettingYaml) ([]PostInterface, error) {
 
 	var listOfPosts []PostInterface
 
-	entries := instructions.Get("1.entries")
-	entries.ForEach(func(_, value gjson.Result) bool {
+	entries := instructions.Get("#(type=TimelineAddEntries).entries")
+	//TODO: entryId profile-conversation 尚未適配 who-to-follow需要避開
+	for _, value := range entries.Array() {
+		//TODO: 簡易解決 : 判斷content.entryType == TimelineTimelineItem
+		if value.Get("content.entryType").String() != "TimelineTimelineItem" {
+			continue
+		}
 		t, err := time.Parse("Mon Jan 2 15:04:05 -0700 2006", value.Get("content.itemContent.tweet_results.result.legacy.created_at").String())
 		if err != nil {
 			t = time.Now()
@@ -260,9 +284,7 @@ func GetTwitterPosts(setting core.SettingYaml) ([]PostInterface, error) {
 			Id:        value.Get("content.itemContent.tweet_results.result.rest_id").String(),
 		}
 		listOfPosts = append(listOfPosts, twitterpost)
-		return true
-	})
-
+	}
 	return listOfPosts, nil
 }
 

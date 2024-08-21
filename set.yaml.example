@@ -6,6 +6,9 @@ twitter:
   CONSUMER_SECRET:
   ACCESS_TOKEN:
   ACCESS_TOKEN_SECRET:
+  REAC_ACCOUNT_MODE: false
+  Auth_token:
+  Ct0:
 threads:
   ENABLE_SYNC: true
   ENABLE_POST: true

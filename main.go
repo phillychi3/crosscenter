@@ -14,7 +14,10 @@ import (
 
 func _init(setting core.SettingYaml, db *diskv.Diskv) {
 	for media, getPosts := range sites.Medias {
-		post, err := db.Read(media)
+		post := []string{}
+		dbpost, err := db.Read(media)
+		json.Unmarshal(dbpost, &post)
+		fmt.Println("len post:", len(post))
 		if err != nil || len(post) == 0 {
 			fmt.Println("first init " + media)
 			getPostsFunc := getPosts.(func(core.SettingYaml) ([]sites.PostInterface, error))
