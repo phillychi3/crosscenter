@@ -167,7 +167,7 @@ func GetThreadsUserId(username string, lsdtoken Tokens) (string, error) {
 	return userId, nil
 }
 
-func GetThreadsPosts(setting core.SettingYaml) ([]ThreadsPost, error) {
+func GetThreadsPosts(setting core.SettingYaml) ([]PostInterface, error) {
 	// 	curl --request POST \
 	//   --url https://www.threads.net/api/graphql \
 	//   --header 'user-agent: threads-client' \
@@ -231,7 +231,7 @@ func GetThreadsPosts(setting core.SettingYaml) ([]ThreadsPost, error) {
 		return nil, errors.New("threads not found")
 	}
 
-	var threadposts []ThreadsPost
+	var threadposts []PostInterface
 
 	threads.ForEach(func(_, thread gjson.Result) bool {
 		posts := thread.Get(fmt.Sprintf(`thread_items.#(post.user.username=="%s")#`, setting.Threads.Username))

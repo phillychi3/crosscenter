@@ -138,7 +138,8 @@ func getTwitterUserId(name string) (string, error) {
 	return userId, nil
 }
 
-func GetTwitterPosts(setting core.SettingYaml) ([]TwitterPost, error) {
+func GetTwitterPosts(setting core.SettingYaml) ([]PostInterface, error) {
+	// 無法獲取全部貼文
 	guesttoken, err := getGuestToken()
 	if err != nil {
 		return nil, err
@@ -236,7 +237,7 @@ func GetTwitterPosts(setting core.SettingYaml) ([]TwitterPost, error) {
 		return nil, fmt.Errorf("cannot load user timeline")
 	}
 
-	var listOfPosts []TwitterPost
+	var listOfPosts []PostInterface
 
 	entries := instructions.Get("1.entries")
 	entries.ForEach(func(_, value gjson.Result) bool {

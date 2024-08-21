@@ -12,6 +12,35 @@ import (
 	"github.com/robfig/cron"
 )
 
+func _init(setting core.SettingYaml, db *diskv.Diskv) {
+	for media, getPosts := range sites.Medias {
+		post, err := db.Read(media)
+		if err != nil || len(post) == 0 {
+			fmt.Println("first init " + media)
+			getPostsFunc := getPosts.(func(core.SettingYaml) ([]sites.PostInterface, error))
+			posts, err := getPostsFunc(setting)
+			if err != nil {
+				fmt.Printf("Error getting posts from %s: %s\n", media, err)
+				continue
+			}
+			fmt.Printf("Get %d posts from %s\n", len(posts), media)
+			postHistory := []string{}
+			for _, post := range posts {
+				postHistory = append(postHistory, post.GetID())
+			}
+			postHistoryBytes, err := json.Marshal(postHistory)
+			if err != nil {
+				fmt.Println("Error marshalling post history:", err)
+				continue
+			}
+			err = db.Write(media, postHistoryBytes)
+			if err != nil {
+				fmt.Println("Error writing post history to db:", err)
+			}
+		}
+	}
+}
+
 func postToSocialMedia(poster sites.SocialMediaPoster, post sites.PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
 	return poster.Post(post, setting, db)
 }
@@ -20,23 +49,25 @@ func main() {
 	setting := core.LoadSetting()
 	db := core.Getdb()
 	c := cron.New()
-
+	_init(setting, db)
 	c.AddFunc("@hourly", func() {
+
+		fmt.Println("Start get post")
 
 		needsendposts := make(map[string][]sites.PostInterface)
 
 		for media, getPosts := range sites.Medias {
-			getPostsFunc := getPosts.(func(core.SettingYaml) []sites.PostInterface)
+			getPostsFunc := getPosts.(func(core.SettingYaml) ([]sites.PostInterface, error))
 			{
-				posts := getPostsFunc(setting)
+				posts, err := getPostsFunc(setting)
+				if err != nil {
+					fmt.Println("Error getting posts:", err)
+					continue
+				}
 				post_history, err := db.Read(media)
-				first := false
 				if err != nil {
 					post_history = []byte("[]")
-					first = true
-					fmt.Println("First time get " + media + " post")
 				}
-
 				var postHistory []string
 				err = json.Unmarshal(post_history, &postHistory)
 				if err != nil {
@@ -46,9 +77,7 @@ func main() {
 				for _, post := range posts {
 					if !slices.Contains(postHistory, post.GetID()) {
 						postHistory = append(postHistory, post.GetID())
-						if !first {
-							needsendposts[media] = append(needsendposts[media], post)
-						}
+						needsendposts[media] = append(needsendposts[media], post)
 					}
 				}
 

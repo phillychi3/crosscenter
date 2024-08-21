@@ -22,13 +22,13 @@ func (t RSSPost) GetImages() []string { return t.images }
 func (t RSSPost) GetData() uint64     { return t.Data }
 func (t RSSPost) GetID() string       { return t.Id }
 
-func GetRSS(setting core.SettingYaml) ([]RSSPost, error) {
+func GetRSS(setting core.SettingYaml) ([]PostInterface, error) {
 	rssparse := gofeed.NewParser()
 	feed, err := rssparse.ParseURL(setting.Rss.Url)
 	if err != nil {
 		return nil, err
 	}
-	var posts []RSSPost
+	var posts []PostInterface
 	for _, item := range feed.Items {
 		post := RSSPost{
 			author:  item.Author.Name,
