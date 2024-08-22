@@ -140,6 +140,9 @@ func getTwitterUserId(name string) (string, error) {
 
 func GetTwitterPosts(setting core.SettingYaml) ([]PostInterface, error) {
 	// 無法獲取全部貼文
+	if setting.Twitter.Username == "" {
+		return nil, fmt.Errorf("twitter username cannot be empty")
+	}
 	guesttoken, err := getGuestToken()
 	if err != nil {
 		return nil, err

@@ -12,8 +12,59 @@ import (
 	"github.com/robfig/cron"
 )
 
+func postToSocialMedia(poster sites.SocialMediaPoster, post sites.PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
+	return poster.Post(post, setting, db)
+}
+
+func check_get_setting(site string, setting core.SettingYaml) bool {
+	switch site {
+	case "Twitter":
+		if !setting.Twitter.ENABLESYNC {
+			return false
+		} else {
+			return true
+		}
+	case "Threads":
+		if !setting.Threads.ENABLESYNC {
+			return false
+		} else {
+			return true
+		}
+	case "Rss":
+		if !setting.Rss.ENABLESYNC {
+			return false
+		} else {
+			return true
+		}
+	default:
+		return false
+	}
+}
+
+func ckeck_post_setting(site string, setting core.SettingYaml) bool {
+	switch site {
+	case "Twitter":
+		if !setting.Twitter.ENABLEPOST {
+			return false
+		} else {
+			return true
+		}
+	case "Threads":
+		if !setting.Threads.ENABLEPOST {
+			return false
+		} else {
+			return true
+		}
+	default:
+		return false
+	}
+}
+
 func _init(setting core.SettingYaml, db *diskv.Diskv) {
 	for media, getPosts := range sites.Medias {
+		if !check_get_setting(media, setting) {
+			continue
+		}
 		post := []string{}
 		dbpost, err := db.Read(media)
 		json.Unmarshal(dbpost, &post)
@@ -44,10 +95,6 @@ func _init(setting core.SettingYaml, db *diskv.Diskv) {
 	}
 }
 
-func postToSocialMedia(poster sites.SocialMediaPoster, post sites.PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
-	return poster.Post(post, setting, db)
-}
-
 func main() {
 	setting := core.LoadSetting()
 	db := core.Getdb()
@@ -60,6 +107,9 @@ func main() {
 		needsendposts := make(map[string][]sites.PostInterface)
 
 		for media, getPosts := range sites.Medias {
+			if !check_get_setting(media, setting) {
+				continue
+			}
 			getPostsFunc := getPosts.(func(core.SettingYaml) ([]sites.PostInterface, error))
 			{
 				posts, err := getPostsFunc(setting)
@@ -108,11 +158,17 @@ func main() {
 				fmt.Println("Error unmarshalling media post:", err)
 			}
 			for _, post := range posts {
-				id, err := postToSocialMedia(sites.PostMedias[media], post, setting, db)
-				if err != nil {
-					fmt.Println("Error posting to social media:", err)
-				} else {
-					mediaposts = append(mediaposts, id)
+				for sitename, site := range sites.PostMedias {
+					//不需要發給自己
+					if sitename == media || !ckeck_post_setting(sitename, setting) {
+						continue
+					}
+					id, err := postToSocialMedia(site, post, setting, db)
+					if err != nil {
+						fmt.Println("Error posting to social media:", err)
+					} else {
+						mediaposts = append(mediaposts, id)
+					}
 				}
 			}
 			Bmediaposts, err = json.Marshal(mediaposts)

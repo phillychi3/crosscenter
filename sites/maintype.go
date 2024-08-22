@@ -20,12 +20,12 @@ type SocialMediaPoster interface {
 }
 
 var Medias = map[string]interface{}{
-	"twitter": GetTwitterPosts,
-	"threads": GetThreadsPosts,
-	"rss":     GetRSS,
+	"Twitter": GetTwitterPosts,
+	"Threads": GetThreadsPosts,
+	"Rss":     GetRSS,
 }
 
 var PostMedias = map[string]SocialMediaPoster{
-	"twitter": TwitterPoster{},
-	"threads": ThreadsPoster{},
+	"Twitter": TwitterPoster{},
+	"Threads": ThreadsPoster{},
 }
