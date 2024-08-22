@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"time"
@@ -297,6 +298,61 @@ func (tp TwitterPoster) Post(post PostInterface, setting core.SettingYaml, db *d
 	return PostTwitterPost(post, setting)
 }
 
+func uploadMediaToTwitter(image string, setting core.SettingYaml) (string, error) {
+	consumerKey := setting.Twitter.CONSUMERKEY
+	consumerSecret := setting.Twitter.CONSUMERSECRET
+	accessToken := setting.Twitter.ACCESSTOKEN
+	accessTokenSecret := setting.Twitter.ACCESSTOKENSECRET
+
+	config := oauth1.NewConfig(consumerKey, consumerSecret)
+	token := oauth1.NewToken(accessToken, accessTokenSecret)
+
+	httpClient := config.Client(oauth1.NoContext, token)
+
+	imageresp, err := http.Get(image)
+	if err != nil {
+		return "", fmt.Errorf("下載圖片失敗: %v", err)
+	}
+	defer imageresp.Body.Close()
+
+	fileContent, err := io.ReadAll(imageresp.Body)
+	if err != nil {
+		return "", fmt.Errorf("讀取圖片失敗: %v", err)
+	}
+
+	b := &bytes.Buffer{}
+	form := multipart.NewWriter(b)
+
+	fw, err := form.CreateFormFile("media", "file.jpg")
+	if err != nil {
+		return "", err
+	}
+
+	if _, err := io.Copy(fw, bytes.NewReader(fileContent)); err != nil {
+		return "", err
+	}
+
+	form.Close()
+
+	uploadResp, err := httpClient.Post("https://upload.twitter.com/1.1/media/upload.json?media_category=tweet_image", form.FormDataContentType(), bytes.NewReader(b.Bytes()))
+	if err != nil {
+		return "", err
+	}
+	defer uploadResp.Body.Close()
+
+	body, err := io.ReadAll(uploadResp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	id := gjson.GetBytes(body, "media_id_string").String()
+	if id == "" {
+		return "", fmt.Errorf("無法獲取 media_id_string")
+	}
+
+	return id, nil
+}
+
 func PostTwitterPost(post PostInterface, setting core.SettingYaml) (string, error) {
 
 	consumerKey := setting.Twitter.CONSUMERKEY
@@ -308,13 +364,28 @@ func PostTwitterPost(post PostInterface, setting core.SettingYaml) (string, erro
 	token := oauth1.NewToken(accessToken, accessTokenSecret)
 
 	httpClient := config.Client(oauth1.NoContext, token)
-
-	tweet := map[string]string{
-		"text": "Hello World! auto post from crosscenter",
+	var tweet map[string]interface{}
+	if len(post.GetImages()) > 0 {
+		mediaIds := []string{}
+		for _, image := range post.GetImages() {
+			mediaId, err := uploadMediaToTwitter(image, setting)
+			if err != nil {
+				fmt.Println("Error uploading media:", err)
+				return "", err
+			}
+			mediaIds = append(mediaIds, mediaId)
+		}
+		tweet = map[string]interface{}{
+			"text": post.GetContent(),
+			"media": map[string]interface{}{
+				"media_ids": mediaIds,
+			},
+		}
+	} else {
+		tweet = map[string]interface{}{
+			"text": post.GetContent(),
+		}
 	}
-	// tweet := map[string]string{
-	// 	"text":post.GetContent(),
-	// }
 	jsonStr, _ := json.Marshal(tweet)
 
 	resp, err := httpClient.Post(

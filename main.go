@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/k0kubun/pp/v3"
 	"github.com/peterbourgon/diskv/v3"
 	"github.com/robfig/cron"
 )
@@ -147,37 +148,40 @@ func main() {
 			}
 		}
 
+		Allposts := make(map[string][]string)
+		for sitename := range sites.PostMedias {
+			var posts []string
+			if bposts, err := db.Read(sitename); err == nil {
+				if err := json.Unmarshal(bposts, &posts); err != nil {
+					fmt.Println("Error unmarshalling media post:", err)
+				}
+			}
+			Allposts[sitename] = posts
+		}
+
 		for media, posts := range needsendposts {
-			Bmediaposts, err := db.Read(media)
-			mediaposts := []string{}
-			if err != nil {
-				fmt.Println("Error reading media post:", err)
-			}
-			err = json.Unmarshal(Bmediaposts, &mediaposts)
-			if err != nil {
-				fmt.Println("Error unmarshalling media post:", err)
-			}
 			for _, post := range posts {
 				for sitename, site := range sites.PostMedias {
 					//不需要發給自己
 					if sitename == media || !ckeck_post_setting(sitename, setting) {
 						continue
 					}
+					pp.Println(post)
 					id, err := postToSocialMedia(site, post, setting, db)
 					if err != nil {
 						fmt.Println("Error posting to social media:", sitename, err)
 						continue
 					}
-					mediaposts = append(mediaposts, id)
+					Allposts[sitename] = append(Allposts[sitename], id)
 					fmt.Printf("success post to %s id: %s\n", sitename, id)
 				}
 			}
-			Bmediaposts, err = json.Marshal(mediaposts)
-			if err != nil {
+		}
+
+		for sitename, posts := range Allposts {
+			if Bposts, err := json.Marshal(posts); err != nil {
 				fmt.Println("Error marshalling media post:", err)
-			}
-			err = db.Write(media, Bmediaposts)
-			if err != nil {
+			} else if err := db.Write(sitename, Bposts); err != nil {
 				fmt.Println("Error writing media post:", err)
 			}
 		}

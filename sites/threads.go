@@ -243,7 +243,6 @@ func GetThreadsPosts(setting core.SettingYaml) ([]PostInterface, error) {
 
 		posts.ForEach(func(_, post gjson.Result) bool {
 			postData := post.Get("post")
-
 			var images []string
 			if postData.Get("carousel_media_count").Type != gjson.Null {
 				postData.Get("carousel_media").ForEach(func(_, media gjson.Result) bool {
@@ -251,7 +250,9 @@ func GetThreadsPosts(setting core.SettingYaml) ([]PostInterface, error) {
 					return true
 				})
 			} else {
-				images = append(images, postData.Get("image_versions2.candidates.0.url").String())
+				if postData.Get("image_versions2.candidates.0.url").String() != "" {
+					images = append(images, postData.Get("image_versions2.candidates.0.url").String())
+				}
 			}
 
 			threadpost := ThreadsPost{
