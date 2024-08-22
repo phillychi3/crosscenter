@@ -68,7 +68,7 @@ func _init(setting core.SettingYaml, db *diskv.Diskv) {
 		post := []string{}
 		dbpost, err := db.Read(media)
 		json.Unmarshal(dbpost, &post)
-		fmt.Println("len post:", len(post))
+		fmt.Println("post count:", len(post), media)
 		if err != nil || len(post) == 0 {
 			fmt.Println("first init " + media)
 			getPostsFunc := getPosts.(func(core.SettingYaml) ([]sites.PostInterface, error))
@@ -165,10 +165,11 @@ func main() {
 					}
 					id, err := postToSocialMedia(site, post, setting, db)
 					if err != nil {
-						fmt.Println("Error posting to social media:", err)
-					} else {
-						mediaposts = append(mediaposts, id)
+						fmt.Println("Error posting to social media:", sitename, err)
+						continue
 					}
+					mediaposts = append(mediaposts, id)
+					fmt.Printf("success post to %s id: %s\n", sitename, id)
 				}
 			}
 			Bmediaposts, err = json.Marshal(mediaposts)

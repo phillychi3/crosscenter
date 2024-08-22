@@ -273,6 +273,7 @@ func GetThreadsPosts(setting core.SettingYaml) ([]PostInterface, error) {
 }
 
 func createThreadsSingleTextContainer(post PostInterface, db *diskv.Diskv) (string, error) {
+	fmt.Println("creating single text container")
 	userid, err := db.Read("threads_userid")
 	if err != nil {
 		return "", err
@@ -312,6 +313,7 @@ func createThreadsSingleTextContainer(post PostInterface, db *diskv.Diskv) (stri
 }
 
 func createThreadsSingleImageMediaContainer(image string, db *diskv.Diskv) (string, error) {
+	fmt.Println("creating single image media container")
 	userid, err := db.Read("threads_userid")
 	if err != nil {
 		return "", err
@@ -352,6 +354,7 @@ func createThreadsSingleImageMediaContainer(image string, db *diskv.Diskv) (stri
 }
 
 func createThreadsCarouselContainer(post PostInterface, mediaContainers []string, db *diskv.Diskv) (string, error) {
+	fmt.Println("creating carousel container")
 	userid, err := db.Read("threads_userid")
 	if err != nil {
 		return "", err
@@ -408,6 +411,7 @@ func reflashaccesstoken(setting core.SettingYaml, db *diskv.Diskv) error {
 }
 
 func getlongaccesstoken(setting core.SettingYaml, db *diskv.Diskv) error {
+	fmt.Println("getting long access token from threads api")
 	url := fmt.Sprintf("https://graph.threads.net/access_token?grant_type=th_exchange_token&client_secret=%s&access_token=%s", setting.Threads.ClientSecret, setting.Threads.AccessToken)
 
 	resp, err := http.Get(url)
@@ -426,6 +430,7 @@ func getlongaccesstoken(setting core.SettingYaml, db *diskv.Diskv) error {
 }
 
 func getUserIdFromThreadsApi(db *diskv.Diskv) (string, error) {
+	fmt.Println("getting user id from threads api")
 	token, err := db.Read("threads_access_token")
 	if err != nil {
 		return "", err
