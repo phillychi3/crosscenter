@@ -394,8 +394,7 @@ func PostTwitterPost(post PostInterface, setting core.SettingYaml) (string, erro
 		bytes.NewBuffer(jsonStr),
 	)
 	if err != nil {
-		fmt.Println("Error sending tweet:", err)
-		return "", err
+		return "", fmt.Errorf("error sending tweet: %v", err)
 	}
 	defer resp.Body.Close()
 

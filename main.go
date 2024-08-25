@@ -11,6 +11,7 @@ import (
 	"github.com/k0kubun/pp/v3"
 	"github.com/peterbourgon/diskv/v3"
 	"github.com/robfig/cron"
+	"go.uber.org/zap"
 )
 
 func postToSocialMedia(poster sites.SocialMediaPoster, post sites.PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
@@ -69,28 +70,28 @@ func _init(setting core.SettingYaml, db *diskv.Diskv) {
 		post := []string{}
 		dbpost, err := db.Read(media)
 		json.Unmarshal(dbpost, &post)
-		fmt.Println("post count:", len(post), media)
+		core.Info(fmt.Sprintf("db data: %d %s", len(post), media))
 		if err != nil || len(post) == 0 {
-			fmt.Println("first init " + media)
+			core.Info(fmt.Sprintf("first init %s", media))
 			getPostsFunc := getPosts.(func(core.SettingYaml) ([]sites.PostInterface, error))
 			posts, err := getPostsFunc(setting)
 			if err != nil {
-				fmt.Printf("Error getting posts from %s: %s\n", media, err)
+				core.Error(fmt.Sprintf("Error getting posts from %s\n", media), zap.Error(err))
 				continue
 			}
-			fmt.Printf("Get %d posts from %s\n", len(posts), media)
+			core.Info(fmt.Sprintf("Get %d posts from %s", len(posts), media))
 			postHistory := []string{}
 			for _, post := range posts {
 				postHistory = append(postHistory, post.GetID())
 			}
 			postHistoryBytes, err := json.Marshal(postHistory)
 			if err != nil {
-				fmt.Println("Error marshalling post history:", err)
+				core.Error("Error marshalling post history", zap.Error(err))
 				continue
 			}
 			err = db.Write(media, postHistoryBytes)
 			if err != nil {
-				fmt.Println("Error writing post history to db:", err)
+				core.Fatal("Error writing post history to db", zap.Error(err))
 			}
 		}
 	}
@@ -103,7 +104,7 @@ func main() {
 	_init(setting, db)
 	c.AddFunc("@hourly", func() {
 
-		fmt.Println("Start get post")
+		core.Info("Start get post")
 
 		needsendposts := make(map[string][]sites.PostInterface)
 
@@ -115,7 +116,7 @@ func main() {
 			{
 				posts, err := getPostsFunc(setting)
 				if err != nil {
-					fmt.Println("Error getting posts:", err)
+					core.Error(fmt.Sprintf("Error getting posts from %s", media), zap.Error(err))
 					continue
 				}
 				post_history, err := db.Read(media)
@@ -125,7 +126,7 @@ func main() {
 				var postHistory []string
 				err = json.Unmarshal(post_history, &postHistory)
 				if err != nil {
-					fmt.Println("Error on get posy history")
+					core.Fatal("Error unmarshalling post history", zap.Error(err))
 				}
 
 				for _, post := range posts {
@@ -138,12 +139,12 @@ func main() {
 				// 塞回去
 				postHistoryBytes, err := json.Marshal(postHistory)
 				if err != nil {
-					fmt.Println("Error marshalling post history:", err)
+					core.Error("Error marshalling post history", zap.Error(err))
 					continue
 				}
 				err = db.Write(media, postHistoryBytes)
 				if err != nil {
-					fmt.Println("Error writing post history to db:", err)
+					core.Error("Error writing post history to db", zap.Error(err))
 				}
 			}
 		}
@@ -153,7 +154,7 @@ func main() {
 			var posts []string
 			if bposts, err := db.Read(sitename); err == nil {
 				if err := json.Unmarshal(bposts, &posts); err != nil {
-					fmt.Println("Error unmarshalling media post:", err)
+					core.Fatal("Error unmarshalling media post", zap.Error(err))
 				}
 			}
 			Allposts[sitename] = posts
@@ -169,20 +170,20 @@ func main() {
 					pp.Println(post)
 					id, err := postToSocialMedia(site, post, setting, db)
 					if err != nil {
-						fmt.Println("Error posting to social media:", sitename, err)
+						core.Error(fmt.Sprintf("Error posting to social media: %s \n", sitename), zap.Error(err))
 						continue
 					}
 					Allposts[sitename] = append(Allposts[sitename], id)
-					fmt.Printf("success post to %s id: %s\n", sitename, id)
+					core.Info(fmt.Sprintf("success post to %s id: %s\n", sitename, id))
 				}
 			}
 		}
 
 		for sitename, posts := range Allposts {
 			if Bposts, err := json.Marshal(posts); err != nil {
-				fmt.Println("Error marshalling media post:", err)
+				core.Fatal("Error marshalling media pos", zap.Error(err))
 			} else if err := db.Write(sitename, Bposts); err != nil {
-				fmt.Println("Error writing media post:", err)
+				core.Fatal("Error writing media post", zap.Error(err))
 			}
 		}
 	})
