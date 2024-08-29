@@ -36,7 +36,7 @@ func (t ThreadsPost) GetAuthor() string   { return t.author }
 func (t ThreadsPost) GetContent() string  { return t.content }
 func (t ThreadsPost) GetURL() string      { return t.url }
 func (t ThreadsPost) GetImages() []string { return t.images }
-func (t ThreadsPost) GetData() uint64     { return t.Data }
+func (t ThreadsPost) GetDate() uint64     { return t.Data }
 func (t ThreadsPost) GetID() string       { return t.id }
 
 type Tokens struct {
@@ -273,7 +273,7 @@ func GetThreadsPosts(setting core.SettingYaml) ([]PostInterface, error) {
 	return threadposts, nil
 }
 
-func createThreadsSingleTextContainer(post PostInterface, db *diskv.Diskv) (string, error) {
+func createThreadsSingleTextContainer(post PostInterface, db *diskv.Diskv, setting core.SettingYaml) (string, error) {
 	core.Debug("creating threads single text container")
 	userid, err := db.Read("threads_userid")
 	if err != nil {
@@ -286,7 +286,7 @@ func createThreadsSingleTextContainer(post PostInterface, db *diskv.Diskv) (stri
 	}
 	payload := url.Values{
 		"media_type":   {"TEXT"},
-		"text":         {post.GetContent()},
+		"text":         {core.TextFormat(setting.Threads.PostText, post)},
 		"access_token": {string(access_token)},
 	}
 	client := &http.Client{}
@@ -354,7 +354,7 @@ func createThreadsSingleImageMediaContainer(image string, db *diskv.Diskv) (stri
 
 }
 
-func createThreadsCarouselContainer(post PostInterface, mediaContainers []string, db *diskv.Diskv) (string, error) {
+func createThreadsCarouselContainer(post PostInterface, mediaContainers []string, db *diskv.Diskv, setting core.SettingYaml) (string, error) {
 	core.Debug("creating carousel container")
 	userid, err := db.Read("threads_userid")
 	if err != nil {
@@ -368,7 +368,7 @@ func createThreadsCarouselContainer(post PostInterface, mediaContainers []string
 	payload := url.Values{
 		"media_type":   {"CAROUSEL"},
 		"children":     {strings.Join(mediaContainers, ",")},
-		"text":         {post.GetContent()},
+		"text":         {core.TextFormat(setting.Threads.PostText, post)},
 		"access_token": {string(access_token)},
 	}
 	client := &http.Client{}
@@ -478,7 +478,7 @@ func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Disk
 	sendurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads_publish", string(userid))
 	var postid string
 	if len(post.GetImages()) == 0 {
-		postid, err = createThreadsSingleTextContainer(post, db)
+		postid, err = createThreadsSingleTextContainer(post, db, setting)
 		if err != nil {
 			return "", err
 		}
@@ -491,7 +491,7 @@ func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Disk
 			}
 			imagesid = append(imagesid, id)
 		}
-		postid, err = createThreadsCarouselContainer(post, imagesid, db)
+		postid, err = createThreadsCarouselContainer(post, imagesid, db, setting)
 		if err != nil {
 			return "", err
 		}

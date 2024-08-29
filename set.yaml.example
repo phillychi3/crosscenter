@@ -2,6 +2,7 @@ twitter:
   ENABLE_SYNC: true
   ENABLE_POST: true
   Username:
+  PostText: '{text} \n#crosscenter'
   CONSUMER_KEY:
   CONSUMER_SECRET:
   ACCESS_TOKEN:
@@ -13,6 +14,7 @@ threads:
   ENABLE_SYNC: true
   ENABLE_POST: true
   Username:
+  PostText: '{text} \n#crosscenter'
   Client_Secret:
   Access_Token:
 rss:

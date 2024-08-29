@@ -19,7 +19,7 @@ func (t RSSPost) GetAuthor() string   { return t.author }
 func (t RSSPost) GetContent() string  { return t.content }
 func (t RSSPost) GetURL() string      { return t.url }
 func (t RSSPost) GetImages() []string { return t.images }
-func (t RSSPost) GetData() uint64     { return t.Data }
+func (t RSSPost) GetDate() uint64     { return t.Data }
 func (t RSSPost) GetID() string       { return t.Id }
 
 func GetRSS(setting core.SettingYaml) ([]PostInterface, error) {
