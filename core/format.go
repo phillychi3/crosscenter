@@ -26,10 +26,8 @@ func formatString(template string, data map[string]string) string {
 	return result
 }
 
+// Example: "{text} #sometag author: {author} url:{url} Date:{date}"
 func TextFormat(text string, post PostInterface) string {
-	// template1 := "{text} #something url:{source_url} Date:{date}"
-	// template2 := "{text} #something url:{source_url} source media: {media}"
-	// template3 := "{text}"
 
 	data := map[string]string{
 		"author": post.GetAuthor(),
