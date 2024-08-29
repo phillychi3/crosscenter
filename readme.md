@@ -9,6 +9,7 @@
 ### Initial Setup
 
 1. Rename `set.yaml.example` to `set.yaml`
+2. change PostText<br> Example: `"{text} #sometag author: {author} url:{url} Date:{date}"`<br>keywords: author, text, url, date
 
 ### Threads Setup
 

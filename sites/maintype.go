@@ -11,7 +11,7 @@ type PostInterface interface {
 	GetContent() string
 	GetURL() string
 	GetImages() []string
-	GetData() uint64
+	GetDate() uint64
 	GetID() string
 }
 

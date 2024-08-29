@@ -33,7 +33,7 @@ func (t TwitterPost) GetAuthor() string   { return t.Author }
 func (t TwitterPost) GetContent() string  { return t.Content }
 func (t TwitterPost) GetURL() string      { return t.Url }
 func (t TwitterPost) GetImages() []string { return t.Images }
-func (t TwitterPost) GetData() uint64     { return t.Data }
+func (t TwitterPost) GetDate() uint64     { return t.Data }
 func (t TwitterPost) GetID() string       { return t.Id }
 
 func getGuestToken() (string, error) {
@@ -376,14 +376,14 @@ func PostTwitterPost(post PostInterface, setting core.SettingYaml) (string, erro
 			mediaIds = append(mediaIds, mediaId)
 		}
 		tweet = map[string]interface{}{
-			"text": post.GetContent(),
+			"text": core.TextFormat(setting.Twitter.PostText, post),
 			"media": map[string]interface{}{
 				"media_ids": mediaIds,
 			},
 		}
 	} else {
 		tweet = map[string]interface{}{
-			"text": post.GetContent(),
+			"text": core.TextFormat(setting.Twitter.PostText, post),
 		}
 	}
 	jsonStr, _ := json.Marshal(tweet)
