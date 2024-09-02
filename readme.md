@@ -61,6 +61,6 @@
 
 ## TODO:
 
-- [ ] Discord webhook
+- [x] Discord webhook
 - [ ] Instagram
 - [ ] Facebook
