@@ -42,6 +42,7 @@ type sendwebhook struct {
 }
 
 func PostDiscordWebhook(post PostInterface, setting core.SettingYaml) (string, error) {
+	core.Debug("Posting to Discord Webhook")
 	url := setting.DiscordWebhook.Url
 	var embed discordembed
 	if len(post.GetImages()) != 0 {

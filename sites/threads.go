@@ -452,6 +452,51 @@ func getUserIdFromThreadsApi(db *diskv.Diskv) (string, error) {
 
 }
 
+func testtoken(db *diskv.Diskv) error {
+	core.Debug("testing token")
+	token, err := db.Read("threads_access_token")
+	if err != nil {
+		return err
+	}
+	url := "https://graph.threads.net/v1.0/me?fields=id&access_token=" + string(token)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
+	}
+	return nil
+}
+
+func getShoutIdFromApi(postid string, db *diskv.Diskv) (string, error) {
+	core.Debug("getting shout id from threads api")
+	token, err := db.Read("threads_access_token")
+	if err != nil {
+		return "", err
+	}
+	url := fmt.Sprintf("https://graph.threads.net/v1.0/%s?fields=shortcode&access_token=%s", postid, string(token))
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	id := gjson.Get(string(body), "shortcode").String()
+	return id, nil
+}
+
 type ThreadsPoster struct{}
 
 func (tp ThreadsPoster) Post(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
@@ -466,6 +511,14 @@ func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Disk
 		if err != nil {
 			return "", err
 		}
+	}
+	err = testtoken(db)
+	if err != nil {
+		err = reflashaccesstoken(setting, db)
+		if err != nil {
+			return "", err
+		}
+		access_token, _ = db.Read("threads_access_token")
 	}
 	userid, err := db.Read("threads_userid")
 	if err != nil {
@@ -482,7 +535,13 @@ func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Disk
 		if err != nil {
 			return "", err
 		}
+	} else if len(post.GetImages()) == 1 {
+		postid, err = createThreadsSingleImageMediaContainer(post.GetImages()[0], db)
+		if err != nil {
+			return "", err
+		}
 	} else {
+		// Carousels require a minimum of two children. from https://developers.facebook.com/docs/threads/posts/#carousel-posts
 		imagesid := []string{}
 		for _, image := range post.GetImages() {
 			id, err := createThreadsSingleImageMediaContainer(image, db)
@@ -495,7 +554,6 @@ func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Disk
 		if err != nil {
 			return "", err
 		}
-
 	}
 	payload := url.Values{
 		"creation_id":  {postid},
@@ -520,5 +578,9 @@ func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Disk
 		return "", fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
 	}
 	id := gjson.Get(string(body), "id").String()
-	return id, nil
+	shortid, err := getShoutIdFromApi(id, db)
+	if err != nil {
+		return "", err
+	}
+	return shortid, nil
 }

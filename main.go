@@ -57,6 +57,12 @@ func ckeck_post_setting(site string, setting core.SettingYaml) bool {
 		} else {
 			return true
 		}
+	case "Discord":
+		if !setting.DiscordWebhook.ENABLEPOST {
+			return false
+		} else {
+			return true
+		}
 	default:
 		return false
 	}
@@ -100,8 +106,8 @@ func _init(setting core.SettingYaml, db *diskv.Diskv) {
 func main() {
 	setting := core.LoadSetting()
 	db := core.Getdb()
-	c := cron.New()
 	_init(setting, db)
+	c := cron.New()
 	c.AddFunc("@hourly", func() {
 
 		core.Info("Start get post")
