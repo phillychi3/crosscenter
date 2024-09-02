@@ -26,4 +26,4 @@ discord_webhook:
   AvatarUrl:
   Username:
   FooterText: 'crosscenter'
-  ENABLEPOST: false
+  ENABLE_POST: false
