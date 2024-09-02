@@ -17,7 +17,7 @@ func (dp DiscordPoster) Post(post PostInterface, setting core.SettingYaml, db *d
 	return PostDiscordWebhook(post, setting)
 }
 
-type discordthumbnail struct {
+type discordimage struct {
 	Url string `json:"url"`
 }
 type discordfooter struct {
@@ -26,13 +26,13 @@ type discordfooter struct {
 }
 
 type discordembed struct {
-	Title       string           `json:"title"`
-	Url         string           `json:"url"`
-	Description string           `json:"description"`
-	Color       int              `json:"color"`
-	Thumbnail   discordthumbnail `json:"thumbnail"`
-	Footer      discordfooter    `json:"footer"`
-	Timestamp   time.Time        `json:"timestamp"`
+	Title       string        `json:"title"`
+	Url         string        `json:"url"`
+	Description string        `json:"description"`
+	Color       int           `json:"color"`
+	Image       discordimage  `json:"image"`
+	Footer      discordfooter `json:"footer"`
+	Timestamp   time.Time     `json:"timestamp"`
 }
 
 type sendwebhook struct {
@@ -54,7 +54,7 @@ func PostDiscordWebhook(post PostInterface, setting core.SettingYaml) (string, e
 			Footer: discordfooter{
 				Text: setting.DiscordWebhook.FooterText,
 			},
-			Thumbnail: discordthumbnail{
+			Image: discordimage{
 				Url: post.GetImages()[0],
 			},
 			Timestamp: time.Unix(int64(post.GetDate()), 0),
