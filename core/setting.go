@@ -34,6 +34,13 @@ type SettingYaml struct {
 		Url        string `yaml:"Url"`
 		ENABLESYNC bool   `yaml:"ENABLE_SYNC"`
 	} `yaml:"rss"`
+	DiscordWebhook struct {
+		Url        string `yaml:"Url"`
+		AvatarUrl  string `yaml:"Avatar_Url"`
+		Username   string `yaml:"Username"`
+		FooterText string `yaml:"FooterText"`
+		ENABLEPOST bool   `yaml:"ENABLE_POST"`
+	} `yaml:"discord_webhook"`
 }
 
 func LoadSetting() SettingYaml {

@@ -18,6 +18,12 @@ threads:
   Client_Secret:
   Access_Token:
 rss:
-  ENABLE_SYNC: true
+  ENABLE_SYNC: false
   Sitename:
   Url:
+discord_webhook:
+  Url:
+  AvatarUrl:
+  Username:
+  FooterText: 'crosscenter'
+  ENABLEPOST: false
