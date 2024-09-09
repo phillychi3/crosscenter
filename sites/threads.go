@@ -314,7 +314,7 @@ func createThreadsSingleTextContainer(post PostInterface, db *diskv.Diskv, setti
 
 }
 
-func createThreadsSingleImageMediaContainer(image string, db *diskv.Diskv, carousel string) (string, error) {
+func createThreadsSingleImageMediaContainer(image string, db *diskv.Diskv, carousel string, text string) (string, error) {
 	core.Debug("creating single image media container")
 	userid, err := db.Read("threads_userid")
 	if err != nil {
@@ -325,12 +325,24 @@ func createThreadsSingleImageMediaContainer(image string, db *diskv.Diskv, carou
 	if err != nil {
 		return "", err
 	}
-	payload := url.Values{
-		"media_type":       {"IMAGE"},
-		"is_carousel_item": {carousel},
-		"image_url":        {image},
-		"access_token":     {string(access_token)},
+	var payload url.Values
+	if text != "" {
+		payload = url.Values{
+			"media_type":       {"IMAGE"},
+			"is_carousel_item": {carousel},
+			"image_url":        {image},
+			"text":             {text},
+			"access_token":     {string(access_token)},
+		}
+	} else {
+		payload = url.Values{
+			"media_type":       {"IMAGE"},
+			"is_carousel_item": {carousel},
+			"image_url":        {image},
+			"access_token":     {string(access_token)},
+		}
 	}
+
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", containerurl, strings.NewReader(payload.Encode()))
 	if err != nil {
@@ -533,21 +545,25 @@ func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Disk
 	}
 	sendurl := fmt.Sprintf("https://graph.threads.net/v1.0/%s/threads_publish", string(userid))
 	var postid string
-	if len(post.GetImages()) == 0 {
+	if len(post.GetImages()) == 0 { // only text
 		postid, err = createThreadsSingleTextContainer(post, db, setting)
 		if err != nil {
 			return "", err
 		}
-	} else if len(post.GetImages()) == 1 {
-		postid, err = createThreadsSingleImageMediaContainer(post.GetImages()[0], db, "false")
+	} else if len(post.GetImages()) == 1 { // single image or image + text
+		if post.GetContent() == "" {
+			postid, err = createThreadsSingleImageMediaContainer(post.GetImages()[0], db, "false", "")
+		} else {
+			postid, err = createThreadsSingleImageMediaContainer(post.GetImages()[0], db, "false", core.TextFormat(post.GetContent(), post))
+		}
 		if err != nil {
 			return "", err
 		}
-	} else {
+	} else { // carousel multiple images
 		// Carousels require a minimum of two children. from https://developers.facebook.com/docs/threads/posts/#carousel-posts
 		imagesid := []string{}
 		for _, image := range post.GetImages() {
-			id, err := createThreadsSingleImageMediaContainer(image, db, "true")
+			id, err := createThreadsSingleImageMediaContainer(image, db, "true", "")
 			if err != nil {
 				return "", err
 			}
