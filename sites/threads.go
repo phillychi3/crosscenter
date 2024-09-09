@@ -13,6 +13,7 @@ import (
 
 	"github.com/peterbourgon/diskv/v3"
 	"github.com/tidwall/gjson"
+	"go.uber.org/zap"
 	"golang.org/x/net/html"
 )
 
@@ -313,7 +314,7 @@ func createThreadsSingleTextContainer(post PostInterface, db *diskv.Diskv, setti
 
 }
 
-func createThreadsSingleImageMediaContainer(image string, db *diskv.Diskv) (string, error) {
+func createThreadsSingleImageMediaContainer(image string, db *diskv.Diskv, carousel string) (string, error) {
 	core.Debug("creating single image media container")
 	userid, err := db.Read("threads_userid")
 	if err != nil {
@@ -326,7 +327,7 @@ func createThreadsSingleImageMediaContainer(image string, db *diskv.Diskv) (stri
 	}
 	payload := url.Values{
 		"media_type":       {"IMAGE"},
-		"is_carousel_item": {"true"},
+		"is_carousel_item": {carousel},
 		"image_url":        {image},
 		"access_token":     {string(access_token)},
 	}
@@ -395,6 +396,7 @@ func createThreadsCarouselContainer(post PostInterface, mediaContainers []string
 }
 
 func reflashaccesstoken(setting core.SettingYaml, db *diskv.Diskv) error {
+	core.Debug("reflashing access token")
 	url := fmt.Sprintf("https://graph.threads.net/refresh_access_token?grant_type=th_refresh_token&access_token=%s", setting.Threads.AccessToken)
 	resp, err := http.Get(url)
 	if err != nil {
@@ -506,7 +508,7 @@ func (tp ThreadsPoster) Post(post PostInterface, setting core.SettingYaml, db *d
 func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
 
 	access_token, err := db.Read("threads_access_token")
-	if err != nil {
+	if err != nil || string(access_token) == "" {
 		err = getlongaccesstoken(setting, db)
 		if err != nil {
 			return "", err
@@ -514,6 +516,7 @@ func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Disk
 	}
 	err = testtoken(db)
 	if err != nil {
+		core.Error("error", zap.Error(err))
 		err = reflashaccesstoken(setting, db)
 		if err != nil {
 			return "", err
@@ -521,7 +524,7 @@ func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Disk
 		access_token, _ = db.Read("threads_access_token")
 	}
 	userid, err := db.Read("threads_userid")
-	if err != nil {
+	if err != nil || string(userid) == "" {
 		userid, err := getUserIdFromThreadsApi(db)
 		if err != nil {
 			return "", err
@@ -536,7 +539,7 @@ func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Disk
 			return "", err
 		}
 	} else if len(post.GetImages()) == 1 {
-		postid, err = createThreadsSingleImageMediaContainer(post.GetImages()[0], db)
+		postid, err = createThreadsSingleImageMediaContainer(post.GetImages()[0], db, "false")
 		if err != nil {
 			return "", err
 		}
@@ -544,7 +547,7 @@ func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Disk
 		// Carousels require a minimum of two children. from https://developers.facebook.com/docs/threads/posts/#carousel-posts
 		imagesid := []string{}
 		for _, image := range post.GetImages() {
-			id, err := createThreadsSingleImageMediaContainer(image, db)
+			id, err := createThreadsSingleImageMediaContainer(image, db, "true")
 			if err != nil {
 				return "", err
 			}
