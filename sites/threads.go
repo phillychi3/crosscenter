@@ -420,6 +420,9 @@ func reflashaccesstoken(setting core.SettingYaml, db *diskv.Diskv) error {
 	if err != nil {
 		return err
 	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
+	}
 	access_token := gjson.Get(string(body), "access_token").String()
 	db.Write("threads_access_token", []byte(access_token))
 	return nil
@@ -438,6 +441,9 @@ func getlongaccesstoken(setting core.SettingYaml, db *diskv.Diskv) error {
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
 	}
 	access_token := gjson.Get(string(body), "access_token").String()
 	db.Write("threads_access_token", []byte(access_token))
