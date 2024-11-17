@@ -41,6 +41,10 @@ type SettingYaml struct {
 		FooterText string `yaml:"FooterText"`
 		ENABLEPOST bool   `yaml:"ENABLE_POST"`
 	} `yaml:"discord_webhook"`
+	BlueSky struct {
+		DID        string `yaml:"DID"`
+		ENABLESYNC bool   `yaml:"ENABLE_SYNC"`
+	} `yaml:"bluesky"`
 }
 
 func LoadSetting() SettingYaml {

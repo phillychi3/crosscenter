@@ -22,8 +22,11 @@ rss:
   Sitename:
   Url:
 discord_webhook:
+  ENABLE_POST: false
   Url:
   AvatarUrl:
   Username:
   FooterText: 'crosscenter'
+bluesky:
   ENABLE_POST: false
+  DID:

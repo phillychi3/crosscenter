@@ -23,6 +23,7 @@ var Medias = map[string]interface{}{
 	"Twitter": GetTwitterPosts,
 	"Threads": GetThreadsPosts,
 	"Rss":     GetRSS,
+	"BlueSky": GetBSKY,
 }
 
 var PostMedias = map[string]SocialMediaPoster{
