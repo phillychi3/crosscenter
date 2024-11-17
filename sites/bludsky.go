@@ -149,7 +149,7 @@ func getAuthorFeed(did string) (*FeedResponse, error) {
 	return &feed, nil
 }
 
-func CreateBskySession(setting core.SettingYaml) (*CreateSessionResponse, error) {
+func createBskySession(setting core.SettingYaml) (*CreateSessionResponse, error) {
 
 	payload := map[string]string{
 		"identifier": setting.BlueSky.DID,
@@ -192,9 +192,62 @@ func CreateBskySession(setting core.SettingYaml) (*CreateSessionResponse, error)
 	return &session, nil
 }
 
+type ref struct {
+	Link string `json:"$link"`
+}
+
+type blobResponse struct {
+	Blob blob `json:"blob"`
+}
+
+type blob struct {
+	Ref      ref    `json:"ref"`
+	MimeType string `json:"mimeType"`
+	Size     int    `json:"size"`
+}
+
+func postBlueskyBlob(image []byte, session *CreateSessionResponse) (*blobResponse, error) {
+	core.Debug("Posting blob to BlueSky")
+	url := "https://bsky.social/xrpc/com.atproto.repo.uploadBlob"
+
+	req, err := http.NewRequest(
+		"POST",
+		url,
+		bytes.NewBuffer(image),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request: %w", err)
+	}
+	req.Header.Set("Content-Type", "image/png")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", session.AccessJwt))
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error making request: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("server returned error status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var blob blobResponse
+
+	err = json.Unmarshal(body, &blob)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing response: %w", err)
+	}
+	return &blob, nil
+}
+
 func PostBlueSky(post PostInterface, setting core.SettingYaml) (string, error) {
 	core.Debug("Posting to BlueSky")
-	session, err := CreateBskySession(setting)
+	session, err := createBskySession(setting)
 	if err != nil {
 		return "", err
 	}
@@ -233,11 +286,44 @@ func PostBlueSky(post PostInterface, setting core.SettingYaml) (string, error) {
 	//       ]
 	//     }
 	//   }
-
-	record := map[string]any{
-		"$type":     "app.bsky.feed.post",
-		"text":      post.GetContent(),
-		"createdAt": time.Now().Format(time.RFC3339),
+	var record map[string]any
+	if len(post.GetImages()) > 0 {
+		core.Debug("Posting with images")
+		images := []map[string]any{}
+		for _, image := range post.GetImages() {
+			imgBytes, err := core.GetImageBytes(image)
+			if err != nil {
+				return "", err
+			}
+			ref, err := postBlueskyBlob(imgBytes, session)
+			if err != nil {
+				return "", err
+			}
+			images = append(images, map[string]any{
+				"alt": "Image",
+				"image": map[string]any{
+					"$type":    "blob",
+					"ref":      ref.Blob.Ref,
+					"mimeType": ref.Blob.MimeType,
+					"size":     ref.Blob.Size,
+				},
+			})
+		}
+		record = map[string]any{
+			"$type":     "app.bsky.feed.post",
+			"text":      post.GetContent(),
+			"createdAt": time.Now().Format(time.RFC3339),
+			"embed": map[string]any{
+				"$type":  "app.bsky.embed.images",
+				"images": images,
+			},
+		}
+	} else {
+		record = map[string]any{
+			"$type":     "app.bsky.feed.post",
+			"text":      post.GetContent(),
+			"createdAt": time.Now().Format(time.RFC3339),
+		}
 	}
 
 	payload := map[string]any{

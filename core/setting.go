@@ -45,6 +45,7 @@ type SettingYaml struct {
 		DID        string `yaml:"DID"`
 		Password   string `yaml:"Password"`
 		ENABLESYNC bool   `yaml:"ENABLE_SYNC"`
+		ENABLEPOST bool   `yaml:"ENABLE_POST"`
 	} `yaml:"bluesky"`
 }
 

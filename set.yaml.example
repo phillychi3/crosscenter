@@ -28,6 +28,7 @@ discord_webhook:
   Username:
   FooterText: 'crosscenter'
 bluesky:
+  ENABLE_SYNC: false
   ENABLE_POST: false
   DID:
   Password:
