@@ -32,6 +32,12 @@ func check_get_setting(site string, setting core.SettingYaml) bool {
 		} else {
 			return true
 		}
+	case "BlueSky":
+		if !setting.BlueSky.ENABLESYNC {
+			return false
+		} else {
+			return true
+		}
 	case "Rss":
 		if !setting.Rss.ENABLESYNC {
 			return false
@@ -59,6 +65,12 @@ func ckeck_post_setting(site string, setting core.SettingYaml) bool {
 		}
 	case "Discord":
 		if !setting.DiscordWebhook.ENABLEPOST {
+			return false
+		} else {
+			return true
+		}
+	case "BlueSky":
+		if !setting.BlueSky.ENABLEPOST {
 			return false
 		} else {
 			return true
