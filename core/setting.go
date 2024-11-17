@@ -43,6 +43,7 @@ type SettingYaml struct {
 	} `yaml:"discord_webhook"`
 	BlueSky struct {
 		DID        string `yaml:"DID"`
+		Password   string `yaml:"Password"`
 		ENABLESYNC bool   `yaml:"ENABLE_SYNC"`
 	} `yaml:"bluesky"`
 }
