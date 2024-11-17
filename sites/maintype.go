@@ -30,4 +30,5 @@ var PostMedias = map[string]SocialMediaPoster{
 	"Twitter": TwitterPoster{},
 	"Threads": ThreadsPoster{},
 	"Discord": DiscordPoster{},
+	"BlueSky": BlueSkyPoster{},
 }

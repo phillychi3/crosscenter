@@ -1,6 +1,7 @@
 package sites
 
 import (
+	"bytes"
 	"crosscenter/core"
 	"encoding/json"
 	"fmt"
@@ -8,33 +9,42 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/peterbourgon/diskv/v3"
+	"github.com/tidwall/gjson"
 )
 
+type BlueSkyPoster struct{}
+
+func (dp BlueSkyPoster) Post(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
+	return PostBlueSky(post, setting)
+}
+
 type BSKYPost struct {
-	author  string
-	content string
-	url     string
-	images  []string
+	Author  string
+	Content string
+	Url     string
+	Images  []string
 	Data    uint64
 	Id      string
 }
 
 type FeedResponse struct {
-	Feed []Post `json:"feed"`
+	Feed []BskyFeedPost `json:"feed"`
 }
 
-type Post struct {
+type BskyFeedPost struct {
 	Post struct {
-		Uri       string    `json:"uri"`
-		Cid       string    `json:"cid"`
-		Author    Author    `json:"author"`
-		Record    Record    `json:"record"`
-		IndexedAt time.Time `json:"indexedAt"`
-		Embed     Embed     `json:"embed"`
+		Uri       string     `json:"uri"`
+		Cid       string     `json:"cid"`
+		Author    BskyAuthor `json:"author"`
+		Record    BskyRecord `json:"record"`
+		IndexedAt time.Time  `json:"indexedAt"`
+		Embed     BskyEmbed  `json:"embed"`
 	} `json:"post"`
 }
 
-type Image struct {
+type BskyImage struct {
 	Thumb       string `json:"thumb"`
 	Fullsize    string `json:"fullsize"`
 	Alt         string `json:"alt"`
@@ -44,25 +54,33 @@ type Image struct {
 	} `json:"aspectRatio"`
 }
 
-type Embed struct {
-	Images []Image `json:"images"`
+type BskyEmbed struct {
+	Images []BskyImage `json:"images"`
 }
 
-type Author struct {
+type BskyAuthor struct {
 	Did         string `json:"did"`
 	Handle      string `json:"handle"`
 	DisplayName string `json:"displayName"`
 }
 
-type Record struct {
+type BskyRecord struct {
 	Text      string    `json:"text"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-func (t BSKYPost) GetAuthor() string   { return t.author }
-func (t BSKYPost) GetContent() string  { return t.content }
-func (t BSKYPost) GetURL() string      { return t.url }
-func (t BSKYPost) GetImages() []string { return t.images }
+type CreateSessionResponse struct {
+	AccessJwt  string    `json:"accessJwt"`
+	RefreshJwt string    `json:"refreshJwt"`
+	Handle     string    `json:"handle"`
+	Did        string    `json:"did"`
+	CreatedAt  time.Time `json:"createdAt"`
+}
+
+func (t BSKYPost) GetAuthor() string   { return t.Author }
+func (t BSKYPost) GetContent() string  { return t.Content }
+func (t BSKYPost) GetURL() string      { return t.Url }
+func (t BSKYPost) GetImages() []string { return t.Images }
 func (t BSKYPost) GetDate() uint64     { return t.Data }
 func (t BSKYPost) GetID() string       { return t.Id }
 
@@ -83,10 +101,10 @@ func GetBSKY(setting core.SettingYaml) ([]PostInterface, error) {
 			images = append(images, image.Fullsize)
 		}
 		bpost := BSKYPost{
-			author:  post.Author.Handle,
-			content: post.Record.Text,
-			url:     fmt.Sprintf("https://bsky.app/profile/%s/post/%s", post.Author.Handle, strings.Split(post.Uri, "/")[len(strings.Split(post.Uri, "/"))-1]),
-			images:  images,
+			Author:  post.Author.Handle,
+			Content: post.Record.Text,
+			Url:     fmt.Sprintf("https://bsky.app/profile/%s/post/%s", post.Author.Handle, strings.Split(post.Uri, "/")[len(strings.Split(post.Uri, "/"))-1]),
+			Images:  images,
 			Data:    uint64(post.Record.CreatedAt.Unix()),
 			Id:      post.Cid,
 		}
@@ -129,4 +147,137 @@ func getAuthorFeed(did string) (*FeedResponse, error) {
 	}
 
 	return &feed, nil
+}
+
+func CreateBskySession(setting core.SettingYaml) (*CreateSessionResponse, error) {
+
+	payload := map[string]string{
+		"identifier": setting.BlueSky.DID,
+		"password":   setting.BlueSky.Password,
+	}
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("error marshalling payload to JSON: %w", err)
+	}
+	req, err := http.NewRequest(
+		"POST",
+		"https://bsky.social/xrpc/com.atproto.server.createSession",
+		bytes.NewBuffer(jsonData),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error making request: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("server returned error status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var session CreateSessionResponse
+	if err := json.Unmarshal(body, &session); err != nil {
+		return nil, fmt.Errorf("error parsing response: %w", err)
+	}
+
+	return &session, nil
+}
+
+func PostBlueSky(post PostInterface, setting core.SettingYaml) (string, error) {
+	core.Debug("Posting to BlueSky")
+	session, err := CreateBskySession(setting)
+	if err != nil {
+		return "", err
+	}
+
+	url := "https://bsky.social/xrpc/com.atproto.repo.createRecord"
+
+	// record {
+	//     "$type": "app.bsky.feed.post",
+	//     "text": "example post with multiple images attached",
+	//     "createdAt": "2023-08-07T05:49:35.422015Z",
+	//     "embed": {
+	//       "$type": "app.bsky.embed.images",
+	//       "images": [
+	//         {
+	//           "alt": "brief alt text description of the first image",
+	//           "image": {
+	//             "$type": "blob",
+	//             "ref": {
+	//               "$link": "bafkreibabalobzn6cd366ukcsjycp4yymjymgfxcv6xczmlgpemzkz3cfa"
+	//             },
+	//             "mimeType": "image/webp",
+	//             "size": 760898
+	//           }
+	//         },
+	//         {
+	//           "alt": "brief alt text description of the second image",
+	//           "image": {
+	//             "$type": "blob",
+	//             "ref": {
+	//               "$link": "bafkreif3fouono2i3fmm5moqypwskh3yjtp7snd5hfq5pr453oggygyrte"
+	//             },
+	//             "mimeType": "image/png",
+	//             "size": 13208
+	//           }
+	//         }
+	//       ]
+	//     }
+	//   }
+
+	record := map[string]any{
+		"$type":     "app.bsky.feed.post",
+		"text":      post.GetContent(),
+		"createdAt": time.Now().Format(time.RFC3339),
+	}
+
+	payload := map[string]any{
+		"repo":       setting.BlueSky.DID,
+		"collection": "app.bsky.feed.post",
+		"record":     record,
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("error marshalling payload: %w", err)
+	}
+
+	req, err := http.NewRequest(
+		"POST",
+		url,
+		bytes.NewBuffer(payloadBytes),
+	)
+	if err != nil {
+		return "", fmt.Errorf("error creating request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", session.AccessJwt))
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("error making request: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("error reading response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("server returned error status %d: %s", resp.StatusCode, string(body))
+	}
+
+	cid := gjson.Get(string(body), "cid").String()
+
+	return cid, nil
 }

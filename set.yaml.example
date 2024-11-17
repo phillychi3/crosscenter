@@ -30,3 +30,4 @@ discord_webhook:
 bluesky:
   ENABLE_POST: false
   DID:
+  Password:
