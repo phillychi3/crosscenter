@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -29,7 +30,22 @@ type Post struct {
 		Author    Author    `json:"author"`
 		Record    Record    `json:"record"`
 		IndexedAt time.Time `json:"indexedAt"`
+		Embed     Embed     `json:"embed"`
 	} `json:"post"`
+}
+
+type Image struct {
+	Thumb       string `json:"thumb"`
+	Fullsize    string `json:"fullsize"`
+	Alt         string `json:"alt"`
+	AspectRatio struct {
+		Height int `json:"height"`
+		Width  int `json:"width"`
+	} `json:"aspectRatio"`
+}
+
+type Embed struct {
+	Images []Image `json:"images"`
 }
 
 type Author struct {
@@ -51,7 +67,7 @@ func (t BSKYPost) GetDate() uint64     { return t.Data }
 func (t BSKYPost) GetID() string       { return t.Id }
 
 func GetBSKY(setting core.SettingYaml) ([]PostInterface, error) {
-	did := "did:plc:crlarl7r5ynd2jabu6xbhapd"
+	did := setting.BlueSky.DID
 
 	feed, err := getAuthorFeed(did)
 	if err != nil {
@@ -62,11 +78,15 @@ func GetBSKY(setting core.SettingYaml) ([]PostInterface, error) {
 
 	for _, item := range feed.Feed {
 		post := item.Post
+		images := []string{}
+		for _, image := range post.Embed.Images {
+			images = append(images, image.Fullsize)
+		}
 		bpost := BSKYPost{
 			author:  post.Author.Handle,
 			content: post.Record.Text,
-			url:     post.Uri,
-			images:  []string{},
+			url:     fmt.Sprintf("https://bsky.app/profile/%s/post/%s", post.Author.Handle, strings.Split(post.Uri, "/")[len(strings.Split(post.Uri, "/"))-1]),
+			images:  images,
 			Data:    uint64(post.Record.CreatedAt.Unix()),
 			Id:      post.Cid,
 		}
