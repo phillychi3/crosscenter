@@ -30,5 +30,6 @@ discord_webhook:
 bluesky:
   ENABLE_SYNC: false
   ENABLE_POST: false
+  PostText: '{text} \n#crosscenter'
   DID:
   Password:

@@ -311,7 +311,7 @@ func PostBlueSky(post PostInterface, setting core.SettingYaml) (string, error) {
 		}
 		record = map[string]any{
 			"$type":     "app.bsky.feed.post",
-			"text":      post.GetContent(),
+			"text":      core.TextFormat(setting.BlueSky.PostText, post),
 			"createdAt": time.Now().Format(time.RFC3339),
 			"embed": map[string]any{
 				"$type":  "app.bsky.embed.images",
@@ -321,7 +321,7 @@ func PostBlueSky(post PostInterface, setting core.SettingYaml) (string, error) {
 	} else {
 		record = map[string]any{
 			"$type":     "app.bsky.feed.post",
-			"text":      post.GetContent(),
+			"text":      core.TextFormat(setting.BlueSky.PostText, post),
 			"createdAt": time.Now().Format(time.RFC3339),
 		}
 	}

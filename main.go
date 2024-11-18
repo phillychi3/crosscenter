@@ -120,7 +120,7 @@ func main() {
 	db := core.Getdb()
 	_init(setting, db)
 	c := cron.New()
-	c.AddFunc("@every 1m", func() {
+	c.AddFunc("@hourly", func() {
 
 		core.Info("Start get post")
 
