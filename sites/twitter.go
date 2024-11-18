@@ -37,7 +37,7 @@ func (t TwitterPost) GetDate() uint64     { return t.Data }
 func (t TwitterPost) GetID() string       { return t.Id }
 
 func getGuestToken() (string, error) {
-	url := "https://api.twitter.com/1.1/guest/activate.json"
+	url := "https://api.x.com/1.1/guest/activate.json"
 
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", url, nil)
@@ -57,7 +57,7 @@ func getGuestToken() (string, error) {
 		"Sec-Fetch-Mode":            {"cors"},
 		"Sec-Fetch-Site":            {"same-origin"},
 		"authorization":             {"Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA"},
-		"Referer":                   {"https://twitter.com/"},
+		"Referer":                   {"https://x.com/"},
 		"Connection":                {"keep-alive"},
 	}
 
@@ -76,49 +76,61 @@ func getGuestToken() (string, error) {
 	return guestToken, nil
 }
 
-func getTwitterUserId(name string) (string, error) {
+func getTwitterUserId(name string, setting core.SettingYaml) (string, error) {
 
-	UserByScreenName := "https://x.com/i/api/graphql/sLVLhk0bGj3MVFEKTdax1w/UserByScreenName?variables=%s&features=%s"
-	guesttoken, err := getGuestToken()
-	if err != nil {
-		return "", err
-	}
+	UserByScreenName := "https://x.com/i/api/graphql/laYnJPCAcVo0o6pzcnlVxQ/UserByScreenName?variables=%s&features=%s&fieldToggles=%s"
 	header := map[string]string{
 		"Content-Type":  "application/json",
-		"x-guest-token": guesttoken,
 		"authorization": "Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA",
-		"x-csrf-token":  "25ea9d09196a6ba850201d47d7e75733",
 	}
 
 	variables := map[string]interface{}{
-		"screen_name":              name,
-		"withSafetyModeUserFields": true,
+		"screen_name": name,
 	}
 
 	features := map[string]bool{
-		"blue_business_profile_image_shape_enabled":                         true,
-		"hidden_profile_likes_enabled":                                      true,
 		"hidden_profile_subscriptions_enabled":                              true,
+		"rweb_tipjar_consumption_enabled":                                   true,
 		"responsive_web_graphql_exclude_directive_enabled":                  true,
 		"verified_phone_label_enabled":                                      false,
 		"subscriptions_verification_info_is_identity_verified_enabled":      true,
 		"subscriptions_verification_info_verified_since_enabled":            true,
 		"highlights_tweets_tab_ui_enabled":                                  true,
+		"responsive_web_twitter_article_notes_tab_enabled":                  true,
+		"subscriptions_feature_can_gift_premium":                            true,
 		"creator_subscriptions_tweet_preview_api_enabled":                   true,
 		"responsive_web_graphql_skip_user_profile_image_extensions_enabled": false,
 		"responsive_web_graphql_timeline_navigation_enabled":                true,
 	}
 
+	filedtoggles := map[string]bool{
+		"withAuxiliaryUserLabels": false,
+	}
+
 	variablesJSON, _ := json.Marshal(variables)
 	featuresJSON, _ := json.Marshal(features)
+	filedtogglesJSON, _ := json.Marshal(filedtoggles)
 
-	reqURL := fmt.Sprintf(UserByScreenName, url.QueryEscape(string(variablesJSON)), url.QueryEscape(string(featuresJSON)))
+	reqURL := fmt.Sprintf(UserByScreenName, url.QueryEscape(string(variablesJSON)), url.QueryEscape(string(featuresJSON)), url.QueryEscape(string(filedtogglesJSON)))
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
 		return "", err
 	}
+	for key, value := range header {
+		req.Header.Set(key, value)
+	}
+	req.Header.Set("x-Csrf-Token", setting.Twitter.Ct0)
+
+	req.AddCookie(&http.Cookie{
+		Name:  "auth_token",
+		Value: setting.Twitter.Auth_token,
+	})
+	req.AddCookie(&http.Cookie{
+		Name:  "ct0",
+		Value: setting.Twitter.Ct0,
+	})
 
 	for key, value := range header {
 		req.Header.Set(key, value)
@@ -149,7 +161,7 @@ func GetTwitterPosts(setting core.SettingYaml) ([]PostInterface, error) {
 		return nil, err
 	}
 
-	useridurl := "https://x.com/i/api/graphql/V7H0Ap3_Hh2FyS75OCDO3Q/UserTweets?variables=%s&features=%s"
+	useridurl := "https://x.com/i/api/graphql/Tg82Ez_kxVaJf7OPbUdbCg/UserTweets?variables=%s&features=%s"
 
 	FEATURES := map[string]bool{
 		"rweb_tipjar_consumption_enabled":                                         true,
@@ -186,24 +198,18 @@ func GetTwitterPosts(setting core.SettingYaml) ([]PostInterface, error) {
 		"x-csrf-token":           "25ea9d09196a6ba850201d47d7e75733",
 	}
 
-	userid, err := getTwitterUserId(setting.Twitter.Username)
+	userid, err := getTwitterUserId(setting.Twitter.Username, setting)
 	if err != nil {
 		return nil, err
 	}
 
 	variables := map[string]interface{}{
-		"userId":                 userid,
-		"count":                  20,
-		"withHighlightedLabel":   true,
-		"withTweetQuoteCount":    true,
-		"includePromotedContent": true,
-		"withTweetResult":        false,
-		"withReactions":          false,
-		"withUserResults":        false,
-		"withVoice":              false,
-		"withNonLegacyCard":      true,
-		"withBirdwatchPivots":    false,
-		"cursor":                 "CURSOR",
+		"userId":                                 userid,
+		"count":                                  20,
+		"includePromotedContent":                 true,
+		"withQuickPromoteEligibilityTweetFields": true,
+		"withVoice":                              true,
+		// "withV2Timeline":                         true,
 	}
 
 	variablesJSON, _ := json.Marshal(variables)
@@ -218,25 +224,19 @@ func GetTwitterPosts(setting core.SettingYaml) ([]PostInterface, error) {
 		return nil, err
 	}
 
-	if setting.Twitter.REACACCOUNTMODE {
-		for key, value := range header {
-			req.Header.Set(key, value)
-		}
-		req.Header.Set("x-csrf-token", setting.Twitter.Ct0)
-
-		req.AddCookie(&http.Cookie{
-			Name:  "auth_token",
-			Value: setting.Twitter.Auth_token,
-		})
-		req.AddCookie(&http.Cookie{
-			Name:  "ct0",
-			Value: setting.Twitter.Ct0,
-		})
-	} else {
-		for key, value := range header {
-			req.Header.Set(key, value)
-		}
+	for key, value := range header {
+		req.Header.Set(key, value)
 	}
+	req.Header.Set("x-csrf-token", setting.Twitter.Ct0)
+
+	req.AddCookie(&http.Cookie{
+		Name:  "auth_token",
+		Value: setting.Twitter.Auth_token,
+	})
+	req.AddCookie(&http.Cookie{
+		Name:  "ct0",
+		Value: setting.Twitter.Ct0,
+	})
 
 	resp, err := client.Do(req)
 	if err != nil {
