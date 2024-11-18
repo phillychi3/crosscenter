@@ -17,7 +17,6 @@ type SettingYaml struct {
 		CONSUMERSECRET    string `yaml:"CONSUMER_SECRET"`
 		ACCESSTOKEN       string `yaml:"ACCESS_TOKEN"`
 		ACCESSTOKENSECRET string `yaml:"ACCESS_TOKEN_SECRET"`
-		REACACCOUNTMODE   bool   `yaml:"REAC_ACCOUNT_MODE"`
 		Auth_token        string `yaml:"Auth_token"`
 		Ct0               string `yaml:"Ct0"`
 	} `yaml:"twitter"`
