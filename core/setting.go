@@ -43,6 +43,7 @@ type SettingYaml struct {
 	BlueSky struct {
 		DID        string `yaml:"DID"`
 		Password   string `yaml:"Password"`
+		PostText   string `yaml:"PostText"`
 		ENABLESYNC bool   `yaml:"ENABLE_SYNC"`
 		ENABLEPOST bool   `yaml:"ENABLE_POST"`
 	} `yaml:"bluesky"`
