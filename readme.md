@@ -2,7 +2,7 @@
 
 <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://github.com/phillychi3/crosscenter/blob/main/docs/icon/light-icon.svg" width=100/>
-    <img alt="" src="https://github.com/phillychi3/crosscenter/blob/main/docs/icon/icon.svg">
+    <img alt="crosscenter icon" src="https://github.com/phillychi3/crosscenter/blob/main/docs/icon/icon.svg" width=100>
 </picture>
 
 > [!WARNING]
