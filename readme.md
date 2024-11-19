@@ -4,6 +4,10 @@
 > No guarantee of account security after use (Twitter)<br>
 > Under development; unstable or catastrophic accidents may occur
 
+<picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/phillychi3/crosscenter/blob/main/docs/icon/light-icon.svg" width=100/>
+    <source media="(prefers-color-scheme: light)" srcset="https://github.com/phillychi3/crosscenter/blob/main/docs/icon/icon.svg" width=100/>
+</picture>
 ## Tutorials
 
 ### Initial Setup

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Gradients Definition -->
+  <defs>
+    <!-- Base gradients -->
+    <linearGradient id="ringGradient1Dark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#888888" />
+      <stop offset="45%" style="stop-color:#333333" />
+      <stop offset="55%" style="stop-color:#222222" />
+      <stop offset="100%" style="stop-color:#666666" />
+      <animateTransform attributeName="gradientTransform"
+                        type="rotate"
+                        from="0 0.5 0.5"
+                        to="360 0.5 0.5"
+                        dur="3s"
+                        repeatCount="indefinite" />
+    </linearGradient>
+
+    <linearGradient id="ringGradient2Dark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#888888" />
+      <stop offset="45%" style="stop-color:#333333" />
+      <stop offset="55%" style="stop-color:#222222" />
+      <stop offset="100%" style="stop-color:#666666" />
+      <animateTransform attributeName="gradientTransform"
+                        type="rotate"
+                        from="90 0.5 0.5"
+                        to="450 0.5 0.5"
+                        dur="3s"
+                        repeatCount="indefinite" />
+    </linearGradient>
+  </defs>
+
+  <!-- Main Logo -->
+  <g transform="rotate(45, 100, 100)">
+    <!-- First Ring -->
+    <ellipse cx="100" cy="100" rx="70" ry="40"
+             fill="none" stroke="url(#ringGradient1Dark)" stroke-width="8"
+             stroke-linecap="round"
+             transform="rotate(0, 100, 100)" />
+
+    <!-- Second Ring -->
+    <ellipse cx="100" cy="100" rx="70" ry="40"
+             fill="none" stroke="url(#ringGradient2Dark)" stroke-width="8"
+             stroke-linecap="round"
+             transform="rotate(90, 100, 100)" />
+  </g>
+
+  <!-- Center Circle -->
+  <circle cx="100" cy="100" r="20" fill="#1a1a1a" />
+
+  <!-- Connection Points -->
+  <circle cx="100" cy="30" r="8" fill="#333333" />
+  <circle cx="170" cy="100" r="8" fill="#333333" />
+  <circle cx="100" cy="170" r="8" fill="#333333" />
+  <circle cx="30" cy="100" r="8" fill="#333333" />
+</svg>
