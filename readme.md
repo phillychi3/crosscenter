@@ -1,5 +1,10 @@
 # CrossCenter
 
+<picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/phillychi3/crosscenter/blob/main/docs/icon/light-icon.svg" width=100/>
+    <img alt="crosscenter icon" src="https://github.com/phillychi3/crosscenter/blob/main/docs/icon/icon.svg" width=100>
+</picture>
+
 > [!WARNING]
 > No guarantee of account security after use (Twitter)<br>
 > Under development; unstable or catastrophic accidents may occur
@@ -59,8 +64,18 @@
 - Read
 - Post
 
+### Discord webhook
+
+- Post
+
+### BlueSky
+
+- Read
+- Post
+
 ## TODO:
 
 - [x] Discord webhook
 - [ ] Instagram
 - [ ] Facebook
+- [x] BlueSky
