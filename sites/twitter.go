@@ -269,6 +269,10 @@ func GetTwitterPosts(setting core.SettingYaml) ([]PostInterface, error) {
 		if value.Get("content.entryType").String() != "TimelineTimelineItem" {
 			continue
 		}
+		// 過濾轉推
+		if value.Get("content.itemContent.tweet_results.result.legacy.retweeted").Bool() {
+			continue
+		}
 		t, err := time.Parse("Mon Jan 2 15:04:05 -0700 2006", value.Get("content.itemContent.tweet_results.result.legacy.created_at").String())
 		if err != nil {
 			t = time.Now()
@@ -281,7 +285,7 @@ func GetTwitterPosts(setting core.SettingYaml) ([]PostInterface, error) {
 		twitterpost := TwitterPost{
 			Author:    value.Get("content.itemContent.tweet_results.result.core.user_results.result.legacy.name").String(),
 			Author_id: value.Get("content.itemContent.tweet_results.result.core.user_results.result.legacy.screen_name").String(),
-			Content:   value.Get("content.itemContent.tweet_results.result.legacy.full_text").String(),
+			Content:   core.Removet_co(value.Get("content.itemContent.tweet_results.result.legacy.full_text").String()),
 			Url:       "https://x.com/" + value.Get("content.itemContent.tweet_results.result.core.user_results.result.legacy.screen_name").String() + "/status/" + value.Get("content.itemContent.tweet_results.result.rest_id").String(),
 			Data:      uint64(t.Unix()),
 			Images:    images,

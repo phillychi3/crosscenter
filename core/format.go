@@ -14,6 +14,11 @@ type PostInterface interface {
 	GetID() string
 }
 
+func Removet_co(text string) string {
+	re := regexp.MustCompile(`https://t.co/[a-zA-Z0-9]+`)
+	return re.ReplaceAllString(text, "")
+}
+
 func formatString(template string, data map[string]string) string {
 	re := regexp.MustCompile(`\{([^}]+)\}`)
 	result := re.ReplaceAllStringFunc(template, func(match string) string {
