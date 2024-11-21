@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -245,6 +246,54 @@ func postBlueskyBlob(image []byte, session *CreateSessionResponse) (*blobRespons
 	return &blob, nil
 }
 
+type index struct {
+	ByteStart int `json:"byteStart"`
+	ByteEnd   int `json:"byteEnd"`
+}
+
+type feature struct {
+	Type_ string `json:"$type"`
+	Uri   string `json:"uri"`
+}
+
+type features struct {
+	Features []feature `json:"features"`
+}
+
+type UrlFact struct {
+	Index    index    `json:"index"`
+	Features features `json:"features"`
+}
+
+func bskyUrlParse(text string) []UrlFact {
+	var urlfact []UrlFact
+	// Regex From: https://stackoverflow.com/a/3809435
+	urlRegex := regexp.MustCompile(`[$|\W](https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*[-a-zA-Z0-9@%_\+~#//=])?)`)
+
+	matches := urlRegex.FindAllStringSubmatchIndex(text, -1)
+	for _, match := range matches {
+		start := match[2]
+		end := match[3]
+		url := text[start:end]
+		urlfact = append(urlfact, UrlFact{
+			Index: index{
+				ByteStart: start,
+				ByteEnd:   end,
+			},
+			Features: features{
+				Features: []feature{
+					{
+						Type_: "app.bsky.richtext.facet#link",
+						Uri:   url,
+					},
+				},
+			},
+		})
+
+	}
+	return urlfact
+}
+
 func PostBlueSky(post PostInterface, setting core.SettingYaml) (string, error) {
 	core.Debug("Posting to BlueSky")
 	session, err := createBskySession(setting)
@@ -317,12 +366,14 @@ func PostBlueSky(post PostInterface, setting core.SettingYaml) (string, error) {
 				"$type":  "app.bsky.embed.images",
 				"images": images,
 			},
+			"facets": bskyUrlParse(core.TextFormat(setting.BlueSky.PostText, post)),
 		}
 	} else {
 		record = map[string]any{
 			"$type":     "app.bsky.feed.post",
 			"text":      core.TextFormat(setting.BlueSky.PostText, post),
 			"createdAt": time.Now().Format(time.RFC3339),
+			"facets":    bskyUrlParse(core.TextFormat(setting.BlueSky.PostText, post)),
 		}
 	}
 
