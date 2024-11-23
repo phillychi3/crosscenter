@@ -256,13 +256,9 @@ type feature struct {
 	Uri   string `json:"uri"`
 }
 
-type features struct {
-	Features []feature `json:"features"`
-}
-
 type UrlFact struct {
-	Index    index    `json:"index"`
-	Features features `json:"features"`
+	Index    index     `json:"index"`
+	Features []feature `json:"features"`
 }
 
 func bskyUrlParse(text string) []UrlFact {
@@ -280,12 +276,10 @@ func bskyUrlParse(text string) []UrlFact {
 				ByteStart: start,
 				ByteEnd:   end,
 			},
-			Features: features{
-				Features: []feature{
-					{
-						Type_: "app.bsky.richtext.facet#link",
-						Uri:   url,
-					},
+			Features: []feature{
+				{
+					Type_: "app.bsky.feature.url",
+					Uri:   url,
 				},
 			},
 		})
