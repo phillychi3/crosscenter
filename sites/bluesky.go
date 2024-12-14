@@ -43,6 +43,11 @@ type BskyFeedPost struct {
 		IndexedAt time.Time  `json:"indexedAt"`
 		Embed     BskyEmbed  `json:"embed"`
 	} `json:"post"`
+	Reason *Reason `json:"reason,omitempty"`
+}
+
+type Reason struct {
+	ReasonType string `json:"$type"`
 }
 
 type BskyImage struct {
@@ -96,6 +101,9 @@ func GetBSKY(setting core.SettingYaml) ([]PostInterface, error) {
 	var posts []PostInterface
 
 	for _, item := range feed.Feed {
+		if item.Reason != nil && item.Reason.ReasonType == "app.bsky.feed.defs#reasonRepost" {
+			continue
+		}
 		post := item.Post
 		images := []string{}
 		for _, image := range post.Embed.Images {
@@ -264,12 +272,12 @@ type UrlFact struct {
 func bskyUrlParse(text string) []UrlFact {
 	var urlfact []UrlFact
 	// Regex From: https://stackoverflow.com/a/3809435
-	urlRegex := regexp.MustCompile(`[$|\W](https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*[-a-zA-Z0-9@%_\+~#//=])?)`)
+	urlRegex := regexp.MustCompile(`https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*[-a-zA-Z0-9@%_\+~#//=])?`)
 
 	matches := urlRegex.FindAllStringSubmatchIndex(text, -1)
 	for _, match := range matches {
-		start := match[2]
-		end := match[3]
+		start := match[0]
+		end := match[1]
 		url := text[start:end]
 		urlfact = append(urlfact, UrlFact{
 			Index: index{
