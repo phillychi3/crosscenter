@@ -22,9 +22,9 @@ func (t RSSPost) GetImages() []string { return t.images }
 func (t RSSPost) GetDate() uint64     { return t.Data }
 func (t RSSPost) GetID() string       { return t.Id }
 
-func GetRSS(setting core.SettingYaml) ([]PostInterface, error) {
+func GetRSS(setting core.RssSetting) ([]PostInterface, error) {
 	rssparse := gofeed.NewParser()
-	feed, err := rssparse.ParseURL(setting.Rss.Url)
+	feed, err := rssparse.ParseURL(setting.Url)
 	if err != nil {
 		return nil, err
 	}

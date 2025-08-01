@@ -17,7 +17,7 @@ import (
 
 type BlueSkyPoster struct{}
 
-func (dp BlueSkyPoster) Post(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
+func (dp BlueSkyPoster) Post(post PostInterface, setting core.BlueSkySetting, db *diskv.Diskv) (string, error) {
 	return PostBlueSky(post, setting)
 }
 
@@ -90,8 +90,8 @@ func (t BSKYPost) GetImages() []string { return t.Images }
 func (t BSKYPost) GetDate() uint64     { return t.Data }
 func (t BSKYPost) GetID() string       { return t.Id }
 
-func GetBSKY(setting core.SettingYaml) ([]PostInterface, error) {
-	did := setting.BlueSky.DID
+func GetBSKY(setting core.BlueSkySetting) ([]PostInterface, error) {
+	did := setting.DID
 
 	feed, err := getAuthorFeed(did)
 	if err != nil {
@@ -158,11 +158,11 @@ func getAuthorFeed(did string) (*FeedResponse, error) {
 	return &feed, nil
 }
 
-func createBskySession(setting core.SettingYaml) (*CreateSessionResponse, error) {
+func createBskySession(setting core.BlueSkySetting) (*CreateSessionResponse, error) {
 
 	payload := map[string]string{
-		"identifier": setting.BlueSky.DID,
-		"password":   setting.BlueSky.Password,
+		"identifier": setting.DID,
+		"password":   setting.Password,
 	}
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
@@ -296,7 +296,7 @@ func bskyUrlParse(text string) []UrlFact {
 	return urlfact
 }
 
-func PostBlueSky(post PostInterface, setting core.SettingYaml) (string, error) {
+func PostBlueSky(post PostInterface, setting core.BlueSkySetting) (string, error) {
 	core.Debug("Posting to BlueSky")
 	session, err := createBskySession(setting)
 	if err != nil {
@@ -362,25 +362,25 @@ func PostBlueSky(post PostInterface, setting core.SettingYaml) (string, error) {
 		}
 		record = map[string]any{
 			"$type":     "app.bsky.feed.post",
-			"text":      core.TextFormat(setting.BlueSky.PostText, post),
+			"text":      core.TextFormat(setting.PostText, post),
 			"createdAt": time.Now().Format(time.RFC3339),
 			"embed": map[string]any{
 				"$type":  "app.bsky.embed.images",
 				"images": images,
 			},
-			"facets": bskyUrlParse(core.TextFormat(setting.BlueSky.PostText, post)),
+			"facets": bskyUrlParse(core.TextFormat(setting.PostText, post)),
 		}
 	} else {
 		record = map[string]any{
 			"$type":     "app.bsky.feed.post",
-			"text":      core.TextFormat(setting.BlueSky.PostText, post),
+			"text":      core.TextFormat(setting.PostText, post),
 			"createdAt": time.Now().Format(time.RFC3339),
-			"facets":    bskyUrlParse(core.TextFormat(setting.BlueSky.PostText, post)),
+			"facets":    bskyUrlParse(core.TextFormat(setting.PostText, post)),
 		}
 	}
 
 	payload := map[string]any{
-		"repo":       setting.BlueSky.DID,
+		"repo":       setting.DID,
 		"collection": "app.bsky.feed.post",
 		"record":     record,
 	}

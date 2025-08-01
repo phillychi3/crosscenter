@@ -76,7 +76,7 @@ func getGuestToken() (string, error) {
 	return guestToken, nil
 }
 
-func getTwitterUserId(name string, setting core.SettingYaml) (string, error) {
+func getTwitterUserId(name string, setting core.TwitterSetting) (string, error) {
 
 	UserByScreenName := "https://x.com/i/api/graphql/laYnJPCAcVo0o6pzcnlVxQ/UserByScreenName?variables=%s&features=%s&fieldToggles=%s"
 	header := map[string]string{
@@ -121,15 +121,15 @@ func getTwitterUserId(name string, setting core.SettingYaml) (string, error) {
 	for key, value := range header {
 		req.Header.Set(key, value)
 	}
-	req.Header.Set("x-Csrf-Token", setting.Twitter.Ct0)
+	req.Header.Set("x-Csrf-Token", setting.Ct0)
 
 	req.AddCookie(&http.Cookie{
 		Name:  "auth_token",
-		Value: setting.Twitter.Auth_token,
+		Value: setting.Auth_token,
 	})
 	req.AddCookie(&http.Cookie{
 		Name:  "ct0",
-		Value: setting.Twitter.Ct0,
+		Value: setting.Ct0,
 	})
 
 	for key, value := range header {
@@ -151,9 +151,9 @@ func getTwitterUserId(name string, setting core.SettingYaml) (string, error) {
 	return userId, nil
 }
 
-func GetTwitterPosts(setting core.SettingYaml) ([]PostInterface, error) {
+func GetTwitterPosts(setting core.TwitterSetting) ([]PostInterface, error) {
 	// 無法獲取全部貼文
-	if setting.Twitter.Username == "" {
+	if setting.Username == "" {
 		return nil, fmt.Errorf("twitter username cannot be empty")
 	}
 	guesttoken, err := getGuestToken()
@@ -198,7 +198,7 @@ func GetTwitterPosts(setting core.SettingYaml) ([]PostInterface, error) {
 		"x-csrf-token":           "25ea9d09196a6ba850201d47d7e75733",
 	}
 
-	userid, err := getTwitterUserId(setting.Twitter.Username, setting)
+	userid, err := getTwitterUserId(setting.Username, setting)
 	if err != nil {
 		return nil, err
 	}
@@ -227,15 +227,15 @@ func GetTwitterPosts(setting core.SettingYaml) ([]PostInterface, error) {
 	for key, value := range header {
 		req.Header.Set(key, value)
 	}
-	req.Header.Set("x-csrf-token", setting.Twitter.Ct0)
+	req.Header.Set("x-csrf-token", setting.Ct0)
 
 	req.AddCookie(&http.Cookie{
 		Name:  "auth_token",
-		Value: setting.Twitter.Auth_token,
+		Value: setting.Auth_token,
 	})
 	req.AddCookie(&http.Cookie{
 		Name:  "ct0",
-		Value: setting.Twitter.Ct0,
+		Value: setting.Ct0,
 	})
 
 	resp, err := client.Do(req)
@@ -298,15 +298,15 @@ func GetTwitterPosts(setting core.SettingYaml) ([]PostInterface, error) {
 
 type TwitterPoster struct{}
 
-func (tp TwitterPoster) Post(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
+func (tp TwitterPoster) Post(post PostInterface, setting core.TwitterSetting, db *diskv.Diskv) (string, error) {
 	return PostTwitterPost(post, setting)
 }
 
-func uploadMediaToTwitter(image string, setting core.SettingYaml) (string, error) {
-	consumerKey := setting.Twitter.CONSUMERKEY
-	consumerSecret := setting.Twitter.CONSUMERSECRET
-	accessToken := setting.Twitter.ACCESSTOKEN
-	accessTokenSecret := setting.Twitter.ACCESSTOKENSECRET
+func uploadMediaToTwitter(image string, setting core.TwitterSetting) (string, error) {
+	consumerKey := setting.CONSUMERKEY
+	consumerSecret := setting.CONSUMERSECRET
+	accessToken := setting.ACCESSTOKEN
+	accessTokenSecret := setting.ACCESSTOKENSECRET
 
 	config := oauth1.NewConfig(consumerKey, consumerSecret)
 	token := oauth1.NewToken(accessToken, accessTokenSecret)
@@ -357,12 +357,12 @@ func uploadMediaToTwitter(image string, setting core.SettingYaml) (string, error
 	return id, nil
 }
 
-func PostTwitterPost(post PostInterface, setting core.SettingYaml) (string, error) {
+func PostTwitterPost(post PostInterface, setting core.TwitterSetting) (string, error) {
 
-	consumerKey := setting.Twitter.CONSUMERKEY
-	consumerSecret := setting.Twitter.CONSUMERSECRET
-	accessToken := setting.Twitter.ACCESSTOKEN
-	accessTokenSecret := setting.Twitter.ACCESSTOKENSECRET
+	consumerKey := setting.CONSUMERKEY
+	consumerSecret := setting.CONSUMERSECRET
+	accessToken := setting.ACCESSTOKEN
+	accessTokenSecret := setting.ACCESSTOKENSECRET
 
 	config := oauth1.NewConfig(consumerKey, consumerSecret)
 	token := oauth1.NewToken(accessToken, accessTokenSecret)
@@ -380,14 +380,14 @@ func PostTwitterPost(post PostInterface, setting core.SettingYaml) (string, erro
 			mediaIds = append(mediaIds, mediaId)
 		}
 		tweet = map[string]interface{}{
-			"text": core.TextFormat(setting.Twitter.PostText, post),
+			"text": core.TextFormat(setting.PostText, post),
 			"media": map[string]interface{}{
 				"media_ids": mediaIds,
 			},
 		}
 	} else {
 		tweet = map[string]interface{}{
-			"text": core.TextFormat(setting.Twitter.PostText, post),
+			"text": core.TextFormat(setting.PostText, post),
 		}
 	}
 	jsonStr, _ := json.Marshal(tweet)

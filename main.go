@@ -18,98 +18,135 @@ func postToSocialMedia(poster sites.SocialMediaPoster, post sites.PostInterface,
 	return poster.Post(post, setting, db)
 }
 
-func check_get_setting(site string, setting core.SettingYaml) bool {
+func check_get_setting(site string, i int, setting core.SettingYaml) bool {
 	switch site {
 	case "Twitter":
-		if !setting.Twitter.ENABLESYNC {
+		if i >= len(setting.Twitter) {
 			return false
-		} else {
-			return true
 		}
+		return setting.Twitter[i].ENABLESYNC
 	case "Threads":
-		if !setting.Threads.ENABLESYNC {
+		if i >= len(setting.Threads) {
 			return false
-		} else {
-			return true
 		}
+		return setting.Threads[i].ENABLESYNC
 	case "BlueSky":
-		if !setting.BlueSky.ENABLESYNC {
+		if i >= len(setting.BlueSky) {
 			return false
-		} else {
-			return true
 		}
+		return setting.BlueSky[i].ENABLESYNC
 	case "Rss":
-		if !setting.Rss.ENABLESYNC {
+		if i >= len(setting.Rss) {
 			return false
-		} else {
-			return true
 		}
+		return setting.Rss[i].ENABLESYNC
 	default:
 		return false
 	}
 }
 
-func ckeck_post_setting(site string, setting core.SettingYaml) bool {
+func ckeck_post_setting(site string, i int, setting core.SettingYaml) bool {
 	switch site {
 	case "Twitter":
-		if !setting.Twitter.ENABLEPOST {
+		if i >= len(setting.Twitter) {
 			return false
-		} else {
-			return true
 		}
+		return setting.Twitter[i].ENABLEPOST
 	case "Threads":
-		if !setting.Threads.ENABLEPOST {
+		if i >= len(setting.Threads) {
 			return false
-		} else {
-			return true
 		}
+		return setting.Threads[i].ENABLEPOST
 	case "Discord":
-		if !setting.DiscordWebhook.ENABLEPOST {
+		if i >= len(setting.DiscordWebhook) {
 			return false
-		} else {
-			return true
 		}
+		return setting.DiscordWebhook[i].ENABLEPOST
 	case "BlueSky":
-		if !setting.BlueSky.ENABLEPOST {
+		if i >= len(setting.BlueSky) {
 			return false
-		} else {
-			return true
 		}
+		return setting.BlueSky[i].ENABLEPOST
 	default:
 		return false
 	}
+}
+
+func initMediaAccount(media string, i int, setting core.SettingYaml, db *diskv.Diskv, getPosts interface{}) error {
+	dbKey := fmt.Sprintf("%s_%d", media, i)
+	post := []string{}
+	dbpost, err := db.Read(dbKey)
+	json.Unmarshal(dbpost, &post)
+	core.Info(fmt.Sprintf("db data: %d %s_%d", len(post), media, i))
+
+	if err != nil || len(post) == 0 {
+		core.Info(fmt.Sprintf("first init %s_%d", media, i))
+		getPostsFunc := getPosts.(func(core.SettingYaml) ([]sites.PostInterface, error))
+		posts, err := getPostsFunc(setting)
+		if err != nil {
+			core.Error(fmt.Sprintf("Error getting posts from %s_%d\n", media, i), zap.Error(err))
+			return err
+		}
+
+		core.Info(fmt.Sprintf("Get %d posts from %s_%d", len(posts), media, i))
+		postHistory := []string{}
+		for _, post := range posts {
+			postHistory = append(postHistory, post.GetID())
+		}
+
+		postHistoryBytes, err := json.Marshal(postHistory)
+		if err != nil {
+			core.Error("Error marshalling post history", zap.Error(err))
+			return err
+		}
+
+		err = db.Write(dbKey, postHistoryBytes)
+		if err != nil {
+			core.Fatal("Error writing post history to db", zap.Error(err))
+			return err
+		}
+	}
+	return nil
 }
 
 func _init(setting core.SettingYaml, db *diskv.Diskv) {
 	for media, getPosts := range sites.Medias {
-		if !check_get_setting(media, setting) {
-			continue
-		}
-		post := []string{}
-		dbpost, err := db.Read(media)
-		json.Unmarshal(dbpost, &post)
-		core.Info(fmt.Sprintf("db data: %d %s", len(post), media))
-		if err != nil || len(post) == 0 {
-			core.Info(fmt.Sprintf("first init %s", media))
-			getPostsFunc := getPosts.(func(core.SettingYaml) ([]sites.PostInterface, error))
-			posts, err := getPostsFunc(setting)
-			if err != nil {
-				core.Error(fmt.Sprintf("Error getting posts from %s\n", media), zap.Error(err))
-				continue
+		switch media {
+		case "Twitter":
+			for i, twitterSetting := range setting.Twitter {
+				if !twitterSetting.ENABLESYNC {
+					continue
+				}
+				if err := initMediaAccount(media, i, setting, db, getPosts); err != nil {
+					core.Error(fmt.Sprintf("Failed to initialize %s account %d", media, i), zap.Error(err))
+				}
 			}
-			core.Info(fmt.Sprintf("Get %d posts from %s", len(posts), media))
-			postHistory := []string{}
-			for _, post := range posts {
-				postHistory = append(postHistory, post.GetID())
+		case "Threads":
+			for i, threadsSetting := range setting.Threads {
+				if !threadsSetting.ENABLESYNC {
+					continue
+				}
+				if err := initMediaAccount(media, i, setting, db, getPosts); err != nil {
+					core.Error(fmt.Sprintf("Failed to initialize %s account %d", media, i), zap.Error(err))
+				}
 			}
-			postHistoryBytes, err := json.Marshal(postHistory)
-			if err != nil {
-				core.Error("Error marshalling post history", zap.Error(err))
-				continue
+		case "BlueSky":
+			for i, blueSkySetting := range setting.BlueSky {
+				if !blueSkySetting.ENABLESYNC {
+					continue
+				}
+				if err := initMediaAccount(media, i, setting, db, getPosts); err != nil {
+					core.Error(fmt.Sprintf("Failed to initialize %s account %d", media, i), zap.Error(err))
+				}
 			}
-			err = db.Write(media, postHistoryBytes)
-			if err != nil {
-				core.Fatal("Error writing post history to db", zap.Error(err))
+		case "Rss":
+			for i, rssSetting := range setting.Rss {
+				if !rssSetting.ENABLESYNC {
+					continue
+				}
+				if err := initMediaAccount(media, i, setting, db, getPosts); err != nil {
+					core.Error(fmt.Sprintf("Failed to initialize %s account %d", media, i), zap.Error(err))
+				}
 			}
 		}
 	}

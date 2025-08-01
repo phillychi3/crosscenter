@@ -13,7 +13,7 @@ import (
 
 type DiscordPoster struct{}
 
-func (dp DiscordPoster) Post(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
+func (dp DiscordPoster) Post(post PostInterface, setting core.DiscordWebhookSetting, db *diskv.Diskv) (string, error) {
 	return PostDiscordWebhook(post, setting)
 }
 
@@ -41,9 +41,9 @@ type sendwebhook struct {
 	Embeds   []discordembed `json:"embeds"`
 }
 
-func PostDiscordWebhook(post PostInterface, setting core.SettingYaml) (string, error) {
+func PostDiscordWebhook(post PostInterface, setting core.DiscordWebhookSetting) (string, error) {
 	core.Debug("Posting to Discord Webhook")
-	url := setting.DiscordWebhook.Url
+	url := setting.Url
 	var embed discordembed
 	if len(post.GetImages()) != 0 {
 		embed = discordembed{
@@ -52,7 +52,7 @@ func PostDiscordWebhook(post PostInterface, setting core.SettingYaml) (string, e
 			Description: post.GetContent(),
 			Color:       0x00ff00,
 			Footer: discordfooter{
-				Text: setting.DiscordWebhook.FooterText,
+				Text: setting.FooterText,
 			},
 			Image: discordimage{
 				Url: post.GetImages()[0],
@@ -66,21 +66,21 @@ func PostDiscordWebhook(post PostInterface, setting core.SettingYaml) (string, e
 			Description: post.GetContent(),
 			Color:       0x00ff00,
 			Footer: discordfooter{
-				Text: setting.DiscordWebhook.FooterText,
+				Text: setting.FooterText,
 			},
 			Timestamp: time.Unix(int64(post.GetDate()), 0),
 		}
 	}
 	var username string
-	if setting.DiscordWebhook.Username != "" {
-		username = setting.DiscordWebhook.Username
+	if setting.Username != "" {
+		username = setting.Username
 	} else {
 		username = post.GetAuthor()
 	}
 
 	sendhook := sendwebhook{
 		Username: username,
-		Avatar:   setting.DiscordWebhook.AvatarUrl,
+		Avatar:   setting.AvatarUrl,
 		Embeds:   []discordembed{embed},
 	}
 

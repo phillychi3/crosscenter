@@ -168,7 +168,7 @@ func GetThreadsUserId(username string, lsdtoken Tokens) (string, error) {
 	return userId, nil
 }
 
-func GetThreadsPosts(setting core.SettingYaml) ([]PostInterface, error) {
+func GetThreadsPosts(setting core.ThreadsSetting) ([]PostInterface, error) {
 	// 	curl --request POST \
 	//   --url https://www.threads.net/api/graphql \
 	//   --header 'user-agent: threads-client' \
@@ -177,15 +177,15 @@ func GetThreadsPosts(setting core.SettingYaml) ([]PostInterface, error) {
 	//   --data 'variables={"userID":"314216"}' \
 	//   --data doc_id=6232751443445612
 
-	if setting.Threads.Username == "" {
+	if setting.Username == "" {
 		return nil, fmt.Errorf("threads username cannot be empty")
 	}
 
-	tokens, err := getToken(setting.Threads.Username)
+	tokens, err := getToken(setting.Username)
 	if err != nil {
 		return nil, err
 	}
-	threadsUserId, err := GetThreadsUserId(setting.Threads.Username, *tokens)
+	threadsUserId, err := GetThreadsUserId(setting.Username, *tokens)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +205,7 @@ func GetThreadsPosts(setting core.SettingYaml) ([]PostInterface, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", ApiUrl, strings.NewReader(payload.Encode()))
 
-	headers := ThreadHeader(setting.Threads.Username, tokens.LSD)
+	headers := ThreadHeader(setting.Username, tokens.LSD)
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}
@@ -240,7 +240,7 @@ func GetThreadsPosts(setting core.SettingYaml) ([]PostInterface, error) {
 	var threadposts []PostInterface
 
 	threads.ForEach(func(_, thread gjson.Result) bool {
-		posts := thread.Get(fmt.Sprintf(`thread_items.#(post.user.username=="%s")#`, setting.Threads.Username))
+		posts := thread.Get(fmt.Sprintf(`thread_items.#(post.user.username=="%s")#`, setting.Username))
 
 		posts.ForEach(func(_, post gjson.Result) bool {
 			postData := post.Get("post")
@@ -259,7 +259,7 @@ func GetThreadsPosts(setting core.SettingYaml) ([]PostInterface, error) {
 			threadpost := ThreadsPost{
 				author:  postData.Get("user.username").String(),
 				content: postData.Get("caption.text").String(),
-				url:     "https://www.threads.net/@" + setting.Threads.Username + "/post/" + postData.Get("code").String(),
+				url:     "https://www.threads.net/@" + setting.Username + "/post/" + postData.Get("code").String(),
 				Data:    postData.Get("taken_at").Uint(),
 				images:  images,
 				id:      postData.Get("code").String(),
@@ -274,7 +274,7 @@ func GetThreadsPosts(setting core.SettingYaml) ([]PostInterface, error) {
 	return threadposts, nil
 }
 
-func createThreadsSingleTextContainer(post PostInterface, db *diskv.Diskv, setting core.SettingYaml) (string, error) {
+func createThreadsSingleTextContainer(post PostInterface, db *diskv.Diskv, setting core.ThreadsSetting) (string, error) {
 	core.Debug("creating threads single text container")
 	userid, err := db.Read("threads_userid")
 	if err != nil {
@@ -287,7 +287,7 @@ func createThreadsSingleTextContainer(post PostInterface, db *diskv.Diskv, setti
 	}
 	payload := url.Values{
 		"media_type":   {"TEXT"},
-		"text":         {core.TextFormat(setting.Threads.PostText, post)},
+		"text":         {core.TextFormat(setting.PostText, post)},
 		"access_token": {string(access_token)},
 	}
 	client := &http.Client{}
@@ -367,7 +367,7 @@ func createThreadsSingleImageMediaContainer(image string, db *diskv.Diskv, carou
 
 }
 
-func createThreadsCarouselContainer(post PostInterface, mediaContainers []string, db *diskv.Diskv, setting core.SettingYaml) (string, error) {
+func createThreadsCarouselContainer(post PostInterface, mediaContainers []string, db *diskv.Diskv, setting core.ThreadsSetting) (string, error) {
 	core.Debug("creating carousel container")
 	userid, err := db.Read("threads_userid")
 	if err != nil {
@@ -381,7 +381,7 @@ func createThreadsCarouselContainer(post PostInterface, mediaContainers []string
 	payload := url.Values{
 		"media_type":   {"CAROUSEL"},
 		"children":     {strings.Join(mediaContainers, ",")},
-		"text":         {core.TextFormat(setting.Threads.PostText, post)},
+		"text":         {core.TextFormat(setting.PostText, post)},
 		"access_token": {string(access_token)},
 	}
 	client := &http.Client{}
@@ -407,9 +407,9 @@ func createThreadsCarouselContainer(post PostInterface, mediaContainers []string
 	return id, nil
 }
 
-func reflashaccesstoken(setting core.SettingYaml, db *diskv.Diskv) error {
+func reflashaccesstoken(setting core.ThreadsSetting, db *diskv.Diskv) error {
 	core.Debug("reflashing access token")
-	url := fmt.Sprintf("https://graph.threads.net/refresh_access_token?grant_type=th_refresh_token&access_token=%s", setting.Threads.AccessToken)
+	url := fmt.Sprintf("https://graph.threads.net/refresh_access_token?grant_type=th_refresh_token&access_token=%s", setting.AccessToken)
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
@@ -428,9 +428,9 @@ func reflashaccesstoken(setting core.SettingYaml, db *diskv.Diskv) error {
 	return nil
 }
 
-func getlongaccesstoken(setting core.SettingYaml, db *diskv.Diskv) error {
+func getlongaccesstoken(setting core.ThreadsSetting, db *diskv.Diskv) error {
 	core.Debug("getting long access token from threads api")
-	url := fmt.Sprintf("https://graph.threads.net/access_token?grant_type=th_exchange_token&client_secret=%s&access_token=%s", setting.Threads.ClientSecret, setting.Threads.AccessToken)
+	url := fmt.Sprintf("https://graph.threads.net/access_token?grant_type=th_exchange_token&client_secret=%s&access_token=%s", setting.ClientSecret, setting.AccessToken)
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -519,11 +519,11 @@ func getShoutIdFromApi(postid string, db *diskv.Diskv) (string, error) {
 
 type ThreadsPoster struct{}
 
-func (tp ThreadsPoster) Post(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
+func (tp ThreadsPoster) Post(post PostInterface, setting core.ThreadsSetting, db *diskv.Diskv) (string, error) {
 	return SendThreadPost(post, setting, db)
 }
 
-func SendThreadPost(post PostInterface, setting core.SettingYaml, db *diskv.Diskv) (string, error) {
+func SendThreadPost(post PostInterface, setting core.ThreadsSetting, db *diskv.Diskv) (string, error) {
 
 	access_token, err := db.Read("threads_access_token")
 	if err != nil || string(access_token) == "" {
