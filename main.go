@@ -5,6 +5,7 @@ import (
 	"crosscenter/sites"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"slices"
 
 	_ "github.com/joho/godotenv/autoload"
@@ -18,57 +19,108 @@ func postToSocialMedia(poster sites.SocialMediaPoster, post sites.PostInterface,
 	return poster.Post(post, setting, db)
 }
 
-func check_get_setting(site string, i int, setting core.SettingYaml) bool {
-	switch site {
+func checkSettingAtIndex(setting core.SettingYaml, mediaType string, index int, fieldName string) bool {
+	settingValue := reflect.ValueOf(setting)
+	var fieldValue reflect.Value
+
+	switch mediaType {
 	case "Twitter":
-		if i >= len(setting.Twitter) {
-			return false
-		}
-		return setting.Twitter[i].ENABLESYNC
+		fieldValue = settingValue.FieldByName("Twitter")
 	case "Threads":
-		if i >= len(setting.Threads) {
-			return false
-		}
-		return setting.Threads[i].ENABLESYNC
+		fieldValue = settingValue.FieldByName("Threads")
 	case "BlueSky":
-		if i >= len(setting.BlueSky) {
-			return false
-		}
-		return setting.BlueSky[i].ENABLESYNC
+		fieldValue = settingValue.FieldByName("BlueSky")
 	case "Rss":
-		if i >= len(setting.Rss) {
-			return false
-		}
-		return setting.Rss[i].ENABLESYNC
+		fieldValue = settingValue.FieldByName("Rss")
+	case "Discord":
+		fieldValue = settingValue.FieldByName("DiscordWebhook")
 	default:
 		return false
 	}
+
+	if !fieldValue.IsValid() || index >= fieldValue.Len() {
+		return false
+	}
+
+	item := fieldValue.Index(index)
+	if field := item.FieldByName(fieldName); field.IsValid() {
+		return field.Bool()
+	}
+
+	return false
 }
 
-func ckeck_post_setting(site string, i int, setting core.SettingYaml) bool {
-	switch site {
+func hasAnySyncEnabled(setting core.SettingYaml, mediaType string) bool {
+	settingValue := reflect.ValueOf(setting)
+	var fieldValue reflect.Value
+
+	switch mediaType {
 	case "Twitter":
-		if i >= len(setting.Twitter) {
-			return false
-		}
-		return setting.Twitter[i].ENABLEPOST
+		fieldValue = settingValue.FieldByName("Twitter")
 	case "Threads":
-		if i >= len(setting.Threads) {
-			return false
-		}
-		return setting.Threads[i].ENABLEPOST
-	case "Discord":
-		if i >= len(setting.DiscordWebhook) {
-			return false
-		}
-		return setting.DiscordWebhook[i].ENABLEPOST
+		fieldValue = settingValue.FieldByName("Threads")
 	case "BlueSky":
-		if i >= len(setting.BlueSky) {
-			return false
-		}
-		return setting.BlueSky[i].ENABLEPOST
+		fieldValue = settingValue.FieldByName("BlueSky")
+	case "Rss":
+		fieldValue = settingValue.FieldByName("Rss")
 	default:
 		return false
+	}
+
+	if !fieldValue.IsValid() {
+		return false
+	}
+
+	for i := 0; i < fieldValue.Len(); i++ {
+		item := fieldValue.Index(i)
+		if enableSyncField := item.FieldByName("ENABLESYNC"); enableSyncField.IsValid() && enableSyncField.Bool() {
+			return true
+		}
+	}
+
+	return false
+}
+
+func hasAnyPostEnabled(setting core.SettingYaml, mediaType string) bool {
+	settingValue := reflect.ValueOf(setting)
+	var fieldValue reflect.Value
+
+	switch mediaType {
+	case "Twitter":
+		fieldValue = settingValue.FieldByName("Twitter")
+	case "Threads":
+		fieldValue = settingValue.FieldByName("Threads")
+	case "BlueSky":
+		fieldValue = settingValue.FieldByName("BlueSky")
+	case "Discord":
+		fieldValue = settingValue.FieldByName("DiscordWebhook")
+	default:
+		return false
+	}
+
+	if !fieldValue.IsValid() {
+		return false
+	}
+
+	for i := 0; i < fieldValue.Len(); i++ {
+		item := fieldValue.Index(i)
+		if enablePostField := item.FieldByName("ENABLEPOST"); enablePostField.IsValid() && enablePostField.Bool() {
+			return true
+		}
+	}
+
+	return false
+}
+
+func checkSyncSetting(setting core.SettingYaml) func(string, int) bool {
+	return func(site string, i int) bool {
+		return checkSettingAtIndex(setting, site, i, "ENABLESYNC")
+	}
+}
+
+func checkPostSetting(setting core.SettingYaml) func(string, int) bool {
+	return func(site string, i int) bool {
+		return checkSettingAtIndex(setting, site, i, "ENABLEPOST")
 	}
 }
 
@@ -111,45 +163,113 @@ func initMediaAccount(media string, i int, setting core.SettingYaml, db *diskv.D
 
 func _init(setting core.SettingYaml, db *diskv.Diskv) {
 	for media, getPosts := range sites.Medias {
+		settingValue := reflect.ValueOf(setting)
+		var fieldValue reflect.Value
+
 		switch media {
 		case "Twitter":
-			for i, twitterSetting := range setting.Twitter {
-				if !twitterSetting.ENABLESYNC {
-					continue
-				}
-				if err := initMediaAccount(media, i, setting, db, getPosts); err != nil {
-					core.Error(fmt.Sprintf("Failed to initialize %s account %d", media, i), zap.Error(err))
-				}
-			}
+			fieldValue = settingValue.FieldByName("Twitter")
 		case "Threads":
-			for i, threadsSetting := range setting.Threads {
-				if !threadsSetting.ENABLESYNC {
-					continue
-				}
-				if err := initMediaAccount(media, i, setting, db, getPosts); err != nil {
-					core.Error(fmt.Sprintf("Failed to initialize %s account %d", media, i), zap.Error(err))
-				}
-			}
+			fieldValue = settingValue.FieldByName("Threads")
 		case "BlueSky":
-			for i, blueSkySetting := range setting.BlueSky {
-				if !blueSkySetting.ENABLESYNC {
-					continue
-				}
-				if err := initMediaAccount(media, i, setting, db, getPosts); err != nil {
-					core.Error(fmt.Sprintf("Failed to initialize %s account %d", media, i), zap.Error(err))
-				}
-			}
+			fieldValue = settingValue.FieldByName("BlueSky")
 		case "Rss":
-			for i, rssSetting := range setting.Rss {
-				if !rssSetting.ENABLESYNC {
-					continue
-				}
+			fieldValue = settingValue.FieldByName("Rss")
+		default:
+			continue
+		}
+
+		if !fieldValue.IsValid() {
+			continue
+		}
+
+		for i := 0; i < fieldValue.Len(); i++ {
+			item := fieldValue.Index(i)
+			if enableSyncField := item.FieldByName("ENABLESYNC"); enableSyncField.IsValid() && enableSyncField.Bool() {
 				if err := initMediaAccount(media, i, setting, db, getPosts); err != nil {
 					core.Error(fmt.Sprintf("Failed to initialize %s account %d", media, i), zap.Error(err))
 				}
 			}
 		}
 	}
+}
+
+func processMediaAccount(media string, index int, setting core.SettingYaml, db *diskv.Diskv, getPostsFunc func(core.SettingYaml) ([]sites.PostInterface, error)) ([]sites.PostInterface, error) {
+	dbKey := fmt.Sprintf("%s_%d", media, index)
+
+	post_history, err := db.Read(dbKey)
+	if err != nil {
+		post_history = []byte("[]")
+	}
+
+	var postHistory []string
+	err = json.Unmarshal(post_history, &postHistory)
+	if err != nil {
+		core.Fatal("Error unmarshalling post history", zap.Error(err))
+		return nil, err
+	}
+
+	posts, err := getPostsFunc(setting)
+	if err != nil {
+		core.Error(fmt.Sprintf("Error getting posts from %s_%d", media, index), zap.Error(err))
+		return nil, err
+	}
+
+	var newPosts []sites.PostInterface
+	for _, post := range posts {
+		if !slices.Contains(postHistory, post.GetID()) {
+			postHistory = append(postHistory, post.GetID())
+			newPosts = append(newPosts, post)
+		}
+	}
+
+	postHistoryBytes, err := json.Marshal(postHistory)
+	if err != nil {
+		core.Error("Error marshalling post history", zap.Error(err))
+		return newPosts, err
+	}
+
+	err = db.Write(dbKey, postHistoryBytes)
+	if err != nil {
+		core.Error("Error writing post history to db", zap.Error(err))
+	}
+
+	return newPosts, nil
+}
+
+func getNewPostsForMedia(media string, setting core.SettingYaml, db *diskv.Diskv, getPostsFunc func(core.SettingYaml) ([]sites.PostInterface, error)) []sites.PostInterface {
+	checkSync := checkSyncSetting(setting)
+	var allNewPosts []sites.PostInterface
+
+	settingValue := reflect.ValueOf(setting)
+	var fieldValue reflect.Value
+
+	switch media {
+	case "Twitter":
+		fieldValue = settingValue.FieldByName("Twitter")
+	case "Threads":
+		fieldValue = settingValue.FieldByName("Threads")
+	case "BlueSky":
+		fieldValue = settingValue.FieldByName("BlueSky")
+	case "Rss":
+		fieldValue = settingValue.FieldByName("Rss")
+	default:
+		return allNewPosts
+	}
+
+	if !fieldValue.IsValid() {
+		return allNewPosts
+	}
+
+	for i := 0; i < fieldValue.Len(); i++ {
+		if checkSync(media, i) {
+			if posts, err := processMediaAccount(media, i, setting, db, getPostsFunc); err == nil {
+				allNewPosts = append(allNewPosts, posts...)
+			}
+		}
+	}
+
+	return allNewPosts
 }
 
 func main() {
@@ -164,43 +284,13 @@ func main() {
 		needsendposts := make(map[string][]sites.PostInterface)
 
 		for media, getPosts := range sites.Medias {
-			if !check_get_setting(media, setting) {
+			if !hasAnySyncEnabled(setting, media) {
 				continue
 			}
 			getPostsFunc := getPosts.(func(core.SettingYaml) ([]sites.PostInterface, error))
-			{
-				posts, err := getPostsFunc(setting)
-				if err != nil {
-					core.Error(fmt.Sprintf("Error getting posts from %s", media), zap.Error(err))
-					continue
-				}
-				post_history, err := db.Read(media)
-				if err != nil {
-					post_history = []byte("[]")
-				}
-				var postHistory []string
-				err = json.Unmarshal(post_history, &postHistory)
-				if err != nil {
-					core.Fatal("Error unmarshalling post history", zap.Error(err))
-				}
-
-				for _, post := range posts {
-					if !slices.Contains(postHistory, post.GetID()) {
-						postHistory = append(postHistory, post.GetID())
-						needsendposts[media] = append(needsendposts[media], post)
-					}
-				}
-
-				// 塞回去
-				postHistoryBytes, err := json.Marshal(postHistory)
-				if err != nil {
-					core.Error("Error marshalling post history", zap.Error(err))
-					continue
-				}
-				err = db.Write(media, postHistoryBytes)
-				if err != nil {
-					core.Error("Error writing post history to db", zap.Error(err))
-				}
+			newPosts := getNewPostsForMedia(media, setting, db, getPostsFunc)
+			if len(newPosts) > 0 {
+				needsendposts[media] = newPosts
 			}
 		}
 
@@ -219,7 +309,7 @@ func main() {
 			for _, post := range posts {
 				for sitename, site := range sites.PostMedias {
 					//不需要發給自己
-					if sitename == media || !ckeck_post_setting(sitename, setting) {
+					if sitename == media || !hasAnyPostEnabled(setting, sitename) {
 						continue
 					}
 					pp.Println(post)
