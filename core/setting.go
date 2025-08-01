@@ -51,12 +51,23 @@ type BlueSkySetting struct {
 	ENABLEPOST bool   `yaml:"ENABLE_POST"`
 }
 
+type SyncRoute struct {
+	From   string   `yaml:"from"`
+	To     []string `yaml:"to"`
+	Enable bool     `yaml:"enable"`
+}
+
+type RoutingConfig struct {
+	SyncRoutes []SyncRoute `yaml:"sync_routes"`
+}
+
 type SettingYaml struct {
 	Twitter        []TwitterSetting        `yaml:"twitter"`
 	Threads        []ThreadsSetting        `yaml:"threads"`
 	Rss            []RssSetting            `yaml:"rss"`
 	DiscordWebhook []DiscordWebhookSetting `yaml:"discord_webhook"`
 	BlueSky        []BlueSkySetting        `yaml:"bluesky"`
+	Routing        RoutingConfig           `yaml:"routing"`
 }
 
 func LoadSetting() SettingYaml {
