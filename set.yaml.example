@@ -1,35 +1,88 @@
 twitter:
-  ENABLE_SYNC: true
-  ENABLE_POST: true
-  Username:
-  PostText: '{text} \n#crosscenter'
-  CONSUMER_KEY:
-  CONSUMER_SECRET:
-  ACCESS_TOKEN:
-  ACCESS_TOKEN_SECRET:
-  REAC_ACCOUNT_MODE: false
-  Auth_token:
-  Ct0:
+  - Username:
+    PostText: '{text} \n#crosscenter'
+    ENABLE_SYNC: false
+    ENABLE_POST: false
+    CONSUMER_KEY:
+    CONSUMER_SECRET:
+    ACCESS_TOKEN:
+    ACCESS_TOKEN_SECRET:
+    Auth_token:
+    Ct0:
+  - Username:
+    PostText: '{text} \n#backup'
+    ENABLE_SYNC: false
+    ENABLE_POST: false
+    CONSUMER_KEY:
+    CONSUMER_SECRET:
+    ACCESS_TOKEN:
+    ACCESS_TOKEN_SECRET:
+    Auth_token:
+    Ct0:
+
 threads:
-  ENABLE_SYNC: true
-  ENABLE_POST: true
-  Username:
-  PostText: '{text} \n#crosscenter'
-  Client_Secret:
-  Access_Token:
+  - Username:
+    PostText: '{text} \n#crosscenter'
+    ENABLE_SYNC: false
+    ENABLE_POST: false
+    Client_Secret:
+    Access_Token:
+  - Username:
+    PostText: '{text} \n#work'
+    ENABLE_SYNC: false
+    ENABLE_POST: false
+    Client_Secret:
+    Access_Token:
+
 rss:
-  ENABLE_SYNC: false
-  Sitename:
-  Url:
+  - ENABLE_SYNC: false
+    Sitename:
+    Url:
+
 discord_webhook:
-  ENABLE_POST: false
-  Url:
-  AvatarUrl:
-  Username:
-  FooterText: 'crosscenter'
+  - Url:
+    AvatarUrl: ""
+    Username:
+    FooterText:
+    ENABLE_POST: false
+
 bluesky:
-  ENABLE_SYNC: false
-  ENABLE_POST: false
-  PostText: '{text} \n#crosscenter'
-  DID:
-  Password:
+  - DID: "did:plc:example"
+    Password: "your_password"
+    PostText: '{text} \n#bluesky'
+    ENABLE_SYNC: false
+    ENABLE_POST: false
+
+
+routing:
+  sync_routes:
+    # Twitter 帳號 1 同步到 Threads 帳號 1
+    - from: "twitter:0"
+      to: ["threads:0"]
+      enable: true
+
+    # Threads 帳號 2 同步到 Twitter 帳號 2
+    - from: "threads:1"
+      to: ["twitter:1"]
+      enable: true
+
+    # Twitter 帳號 1 轉推到 Twitter 帳號 2
+    - from: "twitter:0"
+      to: ["twitter:1"]
+      enable: true
+
+    # RSS 推送到全部平台
+    - from: "rss:0"
+      to: ["twitter:0", "twitter:1", "threads:0", "threads:1", "discord:0", "bluesky:0"]
+      enable: true
+
+
+    # BlueSky 同步到其他平台
+    - from: "bluesky:0"
+      to: ["twitter:0", "discord:0"]
+      enable: true
+
+    # 交叉同步：Threads 1 也同步到 BlueSky
+    - from: "threads:0"
+      to: ["bluesky:0", "discord:0"]
+      enable: true
